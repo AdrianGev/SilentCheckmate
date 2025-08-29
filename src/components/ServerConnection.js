@@ -1,4 +1,4 @@
-// ServerConnection.js - Manages WebSocket connection to the server
+// serverConnection.js - manages WebSocket connection to the server
 const React = require('react');
 const { useState, useEffect, useCallback } = React;
 
@@ -8,16 +8,17 @@ const getServerUrl = () => {
   const savedUrl = localStorage.getItem('SERVER_URL');
   if (savedUrl) return savedUrl;
   
-  // Default to localhost for development
-  return 'http://localhost:3001';
+  // Default to the deployed server
+  return 'https://silentcheckmate.onrender.com';
 };
 
 // Helper to convert HTTP URL to WebSocket URL
 const getWebSocketUrl = (serverUrl) => {
-  return serverUrl.replace(/^http/, 'ws') + '/ws';
+  // Use wss:// for secure connections (https://)
+  return serverUrl.replace(/^https?/, serverUrl.startsWith('https') ? 'wss' : 'ws') + '/ws';
 };
 
-// Create a connection manager component
+// create a connection manager component
 const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
   const [serverUrl, setServerUrl] = useState(getServerUrl());
   const [wsUrl, setWsUrl] = useState(getWebSocketUrl(serverUrl));
@@ -26,7 +27,7 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [tempServerUrl, setTempServerUrl] = useState(serverUrl);
   
-  // Function to connect to the server
+  // function to connect to the server
   const connectToServer = useCallback(() => {
     if (socket) {
       socket.close();
@@ -41,14 +42,14 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
         setIsConnected(true);
         onConnectionChange(true);
         
-        // Set up keep-alive ping
+        // set up keep-alive ping
         const pingInterval = setInterval(() => {
           if (newSocket.readyState === WebSocket.OPEN) {
             newSocket.send(JSON.stringify({ type: 'PING', timestamp: Date.now() }));
           }
         }, 25000);
         
-        // Store the interval ID for cleanup
+        // store the interval ID for cleanup
         newSocket.pingInterval = pingInterval;
       };
       
@@ -67,12 +68,12 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
         setIsConnected(false);
         onConnectionChange(false);
         
-        // Clear the ping interval
+        // clear the ping interval
         if (newSocket.pingInterval) {
           clearInterval(newSocket.pingInterval);
         }
         
-        // Try to reconnect after a delay
+        // try to reconnect after a delay
         setTimeout(connectToServer, 5000);
       };
       
@@ -86,11 +87,11 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
     }
   }, [wsUrl, onMessage, onConnectionChange]);
   
-  // Connect to the server when the component mounts
+  // connect to the server when the component mounts
   useEffect(() => {
     connectToServer();
     
-    // Clean up when the component unmounts
+    // clean up when the component unmounts
     return () => {
       if (socket) {
         if (socket.pingInterval) {
@@ -101,7 +102,7 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
     };
   }, [connectToServer]);
   
-  // Function to send a message to the server
+  // function to send a message to the server
   const sendMessage = useCallback((type, payload) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       const message = {
@@ -116,23 +117,23 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
     }
   }, [socket]);
   
-  // Function to update the server URL
+  // function to update the server URL
   const updateServerUrl = () => {
-    // Save to localStorage
+    // save to localStorage
     localStorage.setItem('SERVER_URL', tempServerUrl);
     
-    // Update state
+    // update state
     setServerUrl(tempServerUrl);
     setWsUrl(getWebSocketUrl(tempServerUrl));
     
-    // Reconnect
+    // reconnect
     connectToServer();
     
-    // Hide settings
+    // hide settings
     setShowSettings(false);
   };
   
-  // Render settings UI if needed
+  // render settings UI if needed
   const renderSettings = () => {
     if (!showSettings) {
       return (
@@ -154,7 +155,7 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
               type="text" 
               value={tempServerUrl} 
               onChange={(e) => setTempServerUrl(e.target.value)}
-              placeholder="http://localhost:3001 or https://your-app.onrender.com"
+              placeholder="https://silentcheckmate.onrender.com (no port needed)"
             />
           </label>
         </div>
@@ -166,7 +167,7 @@ const ServerConnection = ({ children, onMessage, onConnectionChange }) => {
     );
   };
   
-  // Return the connection context and UI
+  // return the connection context and UI
   return (
     <div className="server-connection">
       {renderSettings()}
