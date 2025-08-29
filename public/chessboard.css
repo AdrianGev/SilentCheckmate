@@ -1,0 +1,225 @@
+/* Chessboard CSS */
+.chessboard-container {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.chessboard {
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  position: relative;
+  border: 2px solid #404040;
+  box-sizing: content-box;
+}
+
+.square {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  box-sizing: border-box;
+}
+
+/* Square colors */
+.square.white {
+  background-color: #f0d9b5;
+}
+
+.square.black {
+  background-color: #b58863;
+}
+
+/* Square positions */
+.square[data-square="a8"] { top: 0; left: 0; }
+.square[data-square="b8"] { top: 0; left: 12.5%; }
+.square[data-square="c8"] { top: 0; left: 25%; }
+.square[data-square="d8"] { top: 0; left: 37.5%; }
+.square[data-square="e8"] { top: 0; left: 50%; }
+.square[data-square="f8"] { top: 0; left: 62.5%; }
+.square[data-square="g8"] { top: 0; left: 75%; }
+.square[data-square="h8"] { top: 0; left: 87.5%; }
+
+.square[data-square="a7"] { top: 12.5%; left: 0; }
+.square[data-square="b7"] { top: 12.5%; left: 12.5%; }
+.square[data-square="c7"] { top: 12.5%; left: 25%; }
+.square[data-square="d7"] { top: 12.5%; left: 37.5%; }
+.square[data-square="e7"] { top: 12.5%; left: 50%; }
+.square[data-square="f7"] { top: 12.5%; left: 62.5%; }
+.square[data-square="g7"] { top: 12.5%; left: 75%; }
+.square[data-square="h7"] { top: 12.5%; left: 87.5%; }
+
+.square[data-square="a6"] { top: 25%; left: 0; }
+.square[data-square="b6"] { top: 25%; left: 12.5%; }
+.square[data-square="c6"] { top: 25%; left: 25%; }
+.square[data-square="d6"] { top: 25%; left: 37.5%; }
+.square[data-square="e6"] { top: 25%; left: 50%; }
+.square[data-square="f6"] { top: 25%; left: 62.5%; }
+.square[data-square="g6"] { top: 25%; left: 75%; }
+.square[data-square="h6"] { top: 25%; left: 87.5%; }
+
+.square[data-square="a5"] { top: 37.5%; left: 0; }
+.square[data-square="b5"] { top: 37.5%; left: 12.5%; }
+.square[data-square="c5"] { top: 37.5%; left: 25%; }
+.square[data-square="d5"] { top: 37.5%; left: 37.5%; }
+.square[data-square="e5"] { top: 37.5%; left: 50%; }
+.square[data-square="f5"] { top: 37.5%; left: 62.5%; }
+.square[data-square="g5"] { top: 37.5%; left: 75%; }
+.square[data-square="h5"] { top: 37.5%; left: 87.5%; }
+
+.square[data-square="a4"] { top: 50%; left: 0; }
+.square[data-square="b4"] { top: 50%; left: 12.5%; }
+.square[data-square="c4"] { top: 50%; left: 25%; }
+.square[data-square="d4"] { top: 50%; left: 37.5%; }
+.square[data-square="e4"] { top: 50%; left: 50%; }
+.square[data-square="f4"] { top: 50%; left: 62.5%; }
+.square[data-square="g4"] { top: 50%; left: 75%; }
+.square[data-square="h4"] { top: 50%; left: 87.5%; }
+
+.square[data-square="a3"] { top: 62.5%; left: 0; }
+.square[data-square="b3"] { top: 62.5%; left: 12.5%; }
+.square[data-square="c3"] { top: 62.5%; left: 25%; }
+.square[data-square="d3"] { top: 62.5%; left: 37.5%; }
+.square[data-square="e3"] { top: 62.5%; left: 50%; }
+.square[data-square="f3"] { top: 62.5%; left: 62.5%; }
+.square[data-square="g3"] { top: 62.5%; left: 75%; }
+.square[data-square="h3"] { top: 62.5%; left: 87.5%; }
+
+.square[data-square="a2"] { top: 75%; left: 0; }
+.square[data-square="b2"] { top: 75%; left: 12.5%; }
+.square[data-square="c2"] { top: 75%; left: 25%; }
+.square[data-square="d2"] { top: 75%; left: 37.5%; }
+.square[data-square="e2"] { top: 75%; left: 50%; }
+.square[data-square="f2"] { top: 75%; left: 62.5%; }
+.square[data-square="g2"] { top: 75%; left: 75%; }
+.square[data-square="h2"] { top: 75%; left: 87.5%; }
+
+.square[data-square="a1"] { top: 87.5%; left: 0; }
+.square[data-square="b1"] { top: 87.5%; left: 12.5%; }
+.square[data-square="c1"] { top: 87.5%; left: 25%; }
+.square[data-square="d1"] { top: 87.5%; left: 37.5%; }
+.square[data-square="e1"] { top: 87.5%; left: 50%; }
+.square[data-square="f1"] { top: 87.5%; left: 62.5%; }
+.square[data-square="g1"] { top: 87.5%; left: 75%; }
+.square[data-square="h1"] { top: 87.5%; left: 87.5%; }
+
+/* Notation */
+.notation {
+  position: absolute;
+  font-size: 12px;
+  color: #555;
+  pointer-events: none;
+}
+
+.notation.row {
+  top: 2px;
+  left: 2px;
+}
+
+.notation.col {
+  bottom: 2px;
+  right: 2px;
+}
+
+/* Black orientation */
+.chessboard.black-orientation .square[data-square="a1"] { top: 0; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b1"] { top: 0; left: 75%; }
+.chessboard.black-orientation .square[data-square="c1"] { top: 0; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d1"] { top: 0; left: 50%; }
+.chessboard.black-orientation .square[data-square="e1"] { top: 0; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f1"] { top: 0; left: 25%; }
+.chessboard.black-orientation .square[data-square="g1"] { top: 0; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h1"] { top: 0; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a2"] { top: 12.5%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b2"] { top: 12.5%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c2"] { top: 12.5%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d2"] { top: 12.5%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e2"] { top: 12.5%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f2"] { top: 12.5%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g2"] { top: 12.5%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h2"] { top: 12.5%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a3"] { top: 25%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b3"] { top: 25%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c3"] { top: 25%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d3"] { top: 25%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e3"] { top: 25%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f3"] { top: 25%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g3"] { top: 25%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h3"] { top: 25%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a4"] { top: 37.5%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b4"] { top: 37.5%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c4"] { top: 37.5%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d4"] { top: 37.5%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e4"] { top: 37.5%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f4"] { top: 37.5%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g4"] { top: 37.5%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h4"] { top: 37.5%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a5"] { top: 50%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b5"] { top: 50%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c5"] { top: 50%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d5"] { top: 50%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e5"] { top: 50%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f5"] { top: 50%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g5"] { top: 50%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h5"] { top: 50%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a6"] { top: 62.5%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b6"] { top: 62.5%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c6"] { top: 62.5%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d6"] { top: 62.5%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e6"] { top: 62.5%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f6"] { top: 62.5%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g6"] { top: 62.5%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h6"] { top: 62.5%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a7"] { top: 75%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b7"] { top: 75%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c7"] { top: 75%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d7"] { top: 75%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e7"] { top: 75%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f7"] { top: 75%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g7"] { top: 75%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h7"] { top: 75%; left: 0; }
+
+.chessboard.black-orientation .square[data-square="a8"] { top: 87.5%; left: 87.5%; }
+.chessboard.black-orientation .square[data-square="b8"] { top: 87.5%; left: 75%; }
+.chessboard.black-orientation .square[data-square="c8"] { top: 87.5%; left: 62.5%; }
+.chessboard.black-orientation .square[data-square="d8"] { top: 87.5%; left: 50%; }
+.chessboard.black-orientation .square[data-square="e8"] { top: 87.5%; left: 37.5%; }
+.chessboard.black-orientation .square[data-square="f8"] { top: 87.5%; left: 25%; }
+.chessboard.black-orientation .square[data-square="g8"] { top: 87.5%; left: 12.5%; }
+.chessboard.black-orientation .square[data-square="h8"] { top: 87.5%; left: 0; }
+
+/* Pieces */
+.piece {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+  cursor: grab;
+}
+
+.piece.dragging {
+  cursor: grabbing;
+}
+
+/* Piece images */
+.piece[data-piece="wp"] { background-image: url('../pieces-basic-png/white-pawn.png'); }
+.piece[data-piece="wn"] { background-image: url('../pieces-basic-png/white-knight.png'); }
+.piece[data-piece="wb"] { background-image: url('../pieces-basic-png/white-bishop.png'); }
+.piece[data-piece="wr"] { background-image: url('../pieces-basic-png/white-rook.png'); }
+.piece[data-piece="wq"] { background-image: url('../pieces-basic-png/white-queen.png'); }
+.piece[data-piece="wk"] { background-image: url('../pieces-basic-png/white-king.png'); }
+.piece[data-piece="bp"] { background-image: url('../pieces-basic-png/black-pawn.png'); }
+.piece[data-piece="bn"] { background-image: url('../pieces-basic-png/black-knight.png'); }
+.piece[data-piece="bb"] { background-image: url('../pieces-basic-png/black-bishop.png'); }
+.piece[data-piece="br"] { background-image: url('../pieces-basic-png/black-rook.png'); }
+.piece[data-piece="bq"] { background-image: url('../pieces-basic-png/black-queen.png'); }
+.piece[data-piece="bk"] { background-image: url('../pieces-basic-png/black-king.png'); }
