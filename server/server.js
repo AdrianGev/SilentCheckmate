@@ -5,6 +5,12 @@ import cors from "cors";
 import { WebSocketServer } from "ws";
 import { Chess } from "chess.js";
 import { v4 as uuidv4 } from "uuid";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -14,8 +20,22 @@ app.use(cors({ origin: true, credentials: true }));
 // health check for Render
 app.get("/health", (_, res) => res.type("text").send("ok"));
 
-// basic route
-app.get("/", (_, res) => res.json({ name: "SilentCheckmate", ok: true }));
+// Serve static files from the public directory
+const publicPath = path.join(__dirname, "../public");
+app.use(express.static(publicPath));
+
+// API route
+app.get("/api", (_, res) => res.json({ name: "SilentCheckmate", ok: true }));
+
+// Root route - serve the web client
+app.get("/", (req, res) => {
+  res.sendFile(path.join(publicPath, "index.html"));
+});
+
+// Serve index.html for all other routes (SPA support)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(publicPath, "index.html"));
+});
 
 // create HTTP server + WS server
 const server = http.createServer(app);

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SilentCheckmate - Web Client</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="chessboard.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .game-area {
+            flex: 1;
+            min-width: 400px;
+        }
+        .info-area {
+            flex: 1;
+            min-width: 300px;
+        }
+        .login-screen, .game-screen {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .game-screen {
+            display: none;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .connected {
+            background-color: #4CAF50;
+        }
+        .disconnected {
+            background-color: #f44336;
+        }
+        .server-status {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .game-info {
+            margin-top: 20px;
+        }
+        .move-list {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SilentCheckmate</h1>
+            <div class="server-status">
+                <span class="status-indicator disconnected"></span>
+                <span id="connection-status">Disconnected</span>
+                <button id="settings-btn">Settings</button>
+            </div>
+            <div id="server-settings" style="display: none;">
+                <h3>Server Settings</h3>
+                <div class="form-group">
+                    <label for="server-url">Server URL:</label>
+                    <input 
+                        type="text" 
+                        id="server-url" 
+                        placeholder="https://silentcheckmate.onrender.com (no port needed)"
+                    />
+                </div>
+                <div>
+                    <button id="save-settings-btn">Save</button>
+                    <button id="cancel-settings-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="login-screen" class="login-screen">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div id="login-error" style="color: red; margin-bottom: 10px; display: none;"></div>
+                    <button type="submit">Enter</button>
+                </form>
+            </div>
+
+            <div id="game-screen" class="game-screen">
+                <div class="main-content">
+                    <div class="game-area">
+                        <div id="chessboard" style="width: 400px; height: 400px;"></div>
+                        <div class="game-controls">
+                            <div class="form-group">
+                                <button id="create-game-btn">Create New Game</button>
+                            </div>
+                            <div class="form-group">
+                                <label for="join-game-id">Game ID:</label>
+                                <input type="text" id="join-game-id">
+                                <button id="join-game-btn">Join Game</button>
+                            </div>
+                            <div class="form-group">
+                                <button id="reset-btn">Reset</button>
+                                <button id="resign-btn" disabled>Resign</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-area">
+                        <div id="game-status" class="game-status">Welcome! Create or join a game to start playing.</div>
+                        <div id="game-id-info" class="game-info" style="display: none;">
+                            <strong>Game ID:</strong> <span id="game-id"></span>
+                        </div>
+                        <div id="player-info" class="game-info">
+                            <strong>Player:</strong> <span id="player-username"></span>
+                            <div><strong>Color:</strong> <span id="player-color"></span></div>
+                        </div>
+                        <div id="opponent-info" class="game-info" style="display: none;">
+                            <strong>Opponent:</strong> <span id="opponent-name"></span>
+                        </div>
+                        <div class="game-info">
+                            <strong>Move History:</strong>
+                            <div id="move-list" class="move-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load external libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chess.js@0.12.0/chess.min.js"></script>
+    <script src="chessboard.js"></script>
+    
+    <!-- Main client script -->
+    <script>
+        // Global variables
+        let game = null;
+        let board = null;
+        let username = '';
+        let gameId = '';
+        let playerColor = 'white';
+        let opponent = '';
+        let socket = null;
+        let moveHistory = [];
+        let isGameActive = false;
+
+        // Get server URL from localStorage or use default
+        const getServerUrl = () => {
+            const savedUrl = localStorage.getItem('SERVER_URL');
+            if (savedUrl) return savedUrl;
+            return 'https://silentcheckmate.onrender.com';
+        };
+
+        // Helper to convert HTTP URL to WebSocket URL
+        const getWebSocketUrl = (serverUrl) => {
+            return serverUrl.replace(/^https?/, serverUrl.startsWith('https') ? 'wss' : 'ws') + '/ws';
+        };
+
+        // Initialize socket connection
+        function initializeSocket() {
+            try {
+                const serverUrl = getServerUrl();
+                const wsUrl = getWebSocketUrl(serverUrl);
+                
+                console.log(`Connecting to WebSocket server at ${wsUrl}`);
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = () => {
+                    console.log('WebSocket connection established');
+                    document.getElementById('connection-status').textContent = 'Connected';
+                    document.querySelector('.status-indicator').classList.remove('disconnected');
+                    document.querySelector('.status-indicator').classList.add('connected');
+                    
+                    // If already logged in, send login message
+                    if (username) {
+                        sendMessage('LOGIN', { username });
+                    }
+                };
+                
+                socket.onclose = () => {
+                    console.log('WebSocket connection closed');
+                    document.getElementById('connection-status').textContent = 'Disconnected';
+                    document.querySelector('.status-indicator').classList.remove('connected');
+                    document.querySelector('.status-indicator').classList.add('disconnected');
+                    
+                    // Try to reconnect after a delay
+                    setTimeout(initializeSocket, 5000);
+                };
+                
+                socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('Received message:', data);
+                        handleMessage(data);
+                    } catch (error) {
+                        console.error('Error parsing message:', error);
+                    }
+                };
+                
+                // Set up keep-alive ping
+                if (socket.pingInterval) {
+                    clearInterval(socket.pingInterval);
+                }
+                
+                socket.pingInterval = setInterval(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        sendMessage('PING', { timestamp: Date.now() });
+                    }
+                }, 25000);
+                
+            } catch (error) {
+                console.error('Error initializing socket:', error);
+            }
+        }
+
+        // Send message to server
+        function sendMessage(type, payload) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const message = {
+                    type,
+                    payload,
+                    timestamp: Date.now()
+                };
+                
+                socket.send(JSON.stringify(message));
+            } else {
+                console.error('Cannot send message, socket not connected');
+            }
+        }
+
+        // Handle incoming messages
+        function handleMessage(data) {
+            const { type, payload } = data;
+            
+            switch (type) {
+                case 'PONG':
+                    // Keep-alive response, nothing to do
+                    break;
+                    
+                case 'LOGIN_SUCCESS':
+                    console.log('Login successful:', payload);
+                    break;
+                    
+                case 'GAME_CREATED':
+                    console.log('Game created:', payload);
+                    gameId = payload.gameId;
+                    playerColor = 'white';
+                    isGameActive = true;
+                    
+                    // Update UI
+                    document.getElementById('game-id').textContent = gameId;
+                    document.getElementById('game-id-info').style.display = 'block';
+                    document.getElementById('player-color').textContent = playerColor;
+                    
+                    // Enable/disable buttons
+                    document.getElementById('create-game-btn').disabled = true;
+                    document.getElementById('join-game-btn').disabled = true;
+                    document.getElementById('join-game-id').disabled = true;
+                    document.getElementById('resign-btn').disabled = false;
+                    
+                    updateStatus('Game created! Waiting for opponent...');
+                    break;
+                    
+                case 'GAME_JOINED':
+                    console.log('Game joined:', payload);
+                    gameId = payload.gameId;
+                    playerColor = payload.color;
+                    opponent = payload.creator;
+                    isGameActive = true;
+                    
+                    // Update UI
+                    document.getElementById('game-id').textContent = gameId;
+                    document.getElementById('game-id-info').style.display = 'block';
+                    document.getElementById('player-color').textContent = playerColor;
+                    document.getElementById('opponent-name').textContent = opponent;
+                    document.getElementById('opponent-info').style.display = 'block';
+                    
+                    updateStatus(`Game joined! You are playing as ${playerColor}.`);
+                    
+                    // Enable/disable buttons
+                    document.getElementById('create-game-btn').disabled = true;
+                    document.getElementById('join-game-btn').disabled = true;
+                    document.getElementById('join-game-id').disabled = true;
+                    document.getElementById('resign-btn').disabled = false;
+                    
+                    // Set board orientation
+                    if (board) board.orientation(playerColor);
+                    break;
+                    
+                case 'OPPONENT_JOINED':
+                    console.log('Opponent joined:', payload);
+                    opponent = payload.opponent;
+                    
+                    // Update UI
+                    document.getElementById('opponent-name').textContent = opponent;
+                    document.getElementById('opponent-info').style.display = 'block';
+                    
+                    updateStatus(`${opponent} has joined the game. Your move!`);
+                    break;
+                    
+                case 'MOVE_MADE':
+                    console.log('Move made:', payload);
+                    
+                    // Update the game state
+                    if (game) {
+                        const moveObj = {
+                            from: payload.move.from,
+                            to: payload.move.to,
+                            promotion: 'q' // Always promote to queen for simplicity
+                        };
+                        
+                        game.move(moveObj);
+                        if (board) board.position(game.fen());
+                        
+                        // Add to move history
+                        moveHistory.push(`${payload.player}: ${moveObj.from} to ${moveObj.to}`);
+                        updateMoveList();
+                        
+                        // Update status
+                        if (payload.player !== username) {
+                            updateStatus(`${opponent} moved ${moveObj.from} to ${moveObj.to}. Your turn.`);
+                        } else {
+                            updateStatus(`You moved ${moveObj.from} to ${moveObj.to}. Waiting for opponent.`);
+                        }
+                        
+                        // Check for game over
+                        if (game.isGameOver()) {
+                            handleGameOver();
+                        }
+                    }
+                    break;
+                    
+                case 'GAME_OVER':
+                    console.log('Game over:', payload);
+                    isGameActive = false;
+                    
+                    let message = '';
+                    if (payload.reason === 'checkmate') {
+                        message = `Checkmate! ${payload.winner} wins!`;
+                    } else if (payload.reason === 'resignation') {
+                        message = `${payload.loser} resigned. ${payload.winner} wins!`;
+                    } else if (payload.reason === 'draw') {
+                        message = 'Game ended in a draw.';
+                    } else if (payload.reason === 'stalemate') {
+                        message = 'Game ended in stalemate.';
+                    } else {
+                        message = `Game over. ${payload.winner} wins!`;
+                    }
+                    
+                    updateStatus(message);
+                    
+                    // Enable/disable buttons
+                    document.getElementById('create-game-btn').disabled = false;
+                    document.getElementById('join-game-btn').disabled = false;
+                    document.getElementById('join-game-id').disabled = false;
+                    document.getElementById('resign-btn').disabled = true;
+                    break;
+                    
+                case 'OPPONENT_DISCONNECTED':
+                    console.log('Opponent disconnected:', payload);
+                    updateStatus(`${payload.opponent} has disconnected.`);
+                    
+                    // Enable/disable buttons
+                    document.getElementById('create-game-btn').disabled = false;
+                    document.getElementById('join-game-btn').disabled = false;
+                    document.getElementById('join-game-id').disabled = false;
+                    document.getElementById('resign-btn').disabled = true;
+                    
+                    isGameActive = false;
+                    break;
+                    
+                case 'ERROR':
+                    console.error('Error from server:', payload);
+                    updateStatus(`Error: ${payload.message}`);
+                    break;
+                    
+                default:
+                    console.log('Unknown message type:', type);
+            }
+        }
+
+        // Initialize chess game
+        function initializeChessGame() {
+            try {
+                game = new Chess();
+                console.log('Chess game initialized');
+            } catch (error) {
+                console.error('Error initializing chess game:', error);
+            }
+        }
+
+        // Initialize the chessboard
+        function initializeBoard() {
+            try {
+                console.log('Initializing chessboard...');
+                
+                const config = {
+                    draggable: true,
+                    position: 'start',
+                    onDragStart: onDragStart,
+                    onDrop: onDrop,
+                    onSnapEnd: onSnapEnd
+                };
+                
+                board = Chessboard('chessboard', config);
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    board.resize();
+                });
+                
+                console.log('Chessboard initialized');
+            } catch (error) {
+                console.error('Error initializing chessboard:', error);
+            }
+        }
+
+        // Chess piece drag start handler
+        function onDragStart(source, piece, position, orientation) {
+            // Do not allow piece movement if the game is over
+            if (game && game.isGameOver()) return false;
+            
+            // Only allow the current player to move their pieces
+            if (!isGameActive) return false;
+            
+            // Only allow the player to move their own pieces
+            if ((playerColor === 'white' && piece.search(/^b/) !== -1) ||
+                (playerColor === 'black' && piece.search(/^w/) !== -1)) {
+                return false;
+            }
+            
+            // Only allow moves if it's the player's turn
+            if ((game.turn() === 'w' && playerColor !== 'white') ||
+                (game.turn() === 'b' && playerColor !== 'black')) {
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Chess piece drop handler
+        function onDrop(source, target) {
+            // Check if the move is legal
+            if (!game) return 'snapback';
+            
+            const move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q' // Always promote to queen for simplicity
+            });
+            
+            // If illegal move, snap back
+            if (move === null) return 'snapback';
+            
+            // Send the move to the server
+            if (isGameActive && gameId && socket) {
+                sendMessage('MAKE_MOVE', {
+                    gameId,
+                    move: { from: source, to: target },
+                    fen: game.fen()
+                });
+            }
+            
+            // Check for game over
+            if (game.isGameOver()) {
+                handleGameOver();
+            }
+        }
+
+        // After a piece snap animation completes
+        function onSnapEnd() {
+            if (board && game) {
+                board.position(game.fen());
+            }
+        }
+
+        // Handle game over conditions
+        function handleGameOver() {
+            if (!game) return;
+            
+            isGameActive = false;
+            
+            if (game.isCheckmate()) {
+                const winner = game.turn() === 'w' ? 'Black' : 'White';
+                updateStatus(`Checkmate! ${winner} wins!`);
+            } else if (game.isDraw()) {
+                updateStatus('Game over. Draw.');
+            } else if (game.isStalemate()) {
+                updateStatus('Game over. Stalemate.');
+            } else if (game.isThreefoldRepetition()) {
+                updateStatus('Game over. Draw by repetition.');
+            } else if (game.isInsufficientMaterial()) {
+                updateStatus('Game over. Draw by insufficient material.');
+            }
+            
+            // Enable/disable buttons
+            document.getElementById('create-game-btn').disabled = false;
+            document.getElementById('join-game-btn').disabled = false;
+            document.getElementById('join-game-id').disabled = false;
+            document.getElementById('resign-btn').disabled = true;
+        }
+
+        // Update the game status message
+        function updateStatus(message) {
+            const statusEl = document.getElementById('game-status');
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+            console.log('Status:', message);
+        }
+
+        // Update the move history list
+        function updateMoveList() {
+            const moveListEl = document.getElementById('move-list');
+            
+            if (moveListEl) {
+                moveListEl.innerHTML = '';
+                
+                moveHistory.forEach((move, index) => {
+                    const moveItem = document.createElement('div');
+                    moveItem.textContent = `${index + 1}. ${move}`;
+                    moveListEl.appendChild(moveItem);
+                });
+                
+                // Scroll to bottom
+                moveListEl.scrollTop = moveListEl.scrollHeight;
+            }
+        }
+
+        // Update server URL
+        function updateServerUrl() {
+            const serverUrlInput = document.getElementById('server-url');
+            const newUrl = serverUrlInput.value.trim();
+            
+            if (newUrl) {
+                localStorage.setItem('SERVER_URL', newUrl);
+                
+                // Close existing socket
+                if (socket) {
+                    if (socket.pingInterval) {
+                        clearInterval(socket.pingInterval);
+                    }
+                    socket.close();
+                }
+                
+                // Reconnect with new URL
+                initializeSocket();
+                
+                // Hide settings
+                document.getElementById('server-settings').style.display = 'none';
+            }
+        }
+
+        // DOM ready handler
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM fully loaded');
+            
+            // Initialize chess game and socket
+            initializeChessGame();
+            initializeSocket();
+            
+            // Server settings
+            const settingsBtn = document.getElementById('settings-btn');
+            const saveSettingsBtn = document.getElementById('save-settings-btn');
+            const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
+            const serverUrlInput = document.getElementById('server-url');
+            
+            settingsBtn.addEventListener('click', () => {
+                serverUrlInput.value = getServerUrl();
+                document.getElementById('server-settings').style.display = 'block';
+            });
+            
+            saveSettingsBtn.addEventListener('click', updateServerUrl);
+            
+            cancelSettingsBtn.addEventListener('click', () => {
+                document.getElementById('server-settings').style.display = 'none';
+            });
+            
+            // Login form
+            const loginForm = document.getElementById('login-form');
+            const usernameInput = document.getElementById('username');
+            const loginError = document.getElementById('login-error');
+            const loginScreen = document.getElementById('login-screen');
+            const gameScreen = document.getElementById('game-screen');
+            
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const usernameValue = usernameInput.value.trim();
+                
+                if (!usernameValue) {
+                    loginError.textContent = 'Please enter a username';
+                    loginError.style.display = 'block';
+                    return;
+                }
+                
+                username = usernameValue;
+                document.getElementById('player-username').textContent = username;
+                
+                // Hide login screen, show game screen
+                loginScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                
+                // Initialize the board
+                initializeBoard();
+                
+                // Send login message if connected
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    sendMessage('LOGIN', { username });
+                }
+            });
+            
+            // Game control buttons
+            const createGameBtn = document.getElementById('create-game-btn');
+            const joinGameIdInput = document.getElementById('join-game-id');
+            const joinGameBtn = document.getElementById('join-game-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const resignBtn = document.getElementById('resign-btn');
+            
+            createGameBtn.addEventListener('click', () => {
+                if (!username) {
+                    updateStatus('Please enter a username first');
+                    return;
+                }
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    sendMessage('CREATE_GAME', {});
+                    updateStatus('Creating new game...');
+                } else {
+                    updateStatus('Not connected to server');
+                }
+            });
+            
+            joinGameBtn.addEventListener('click', () => {
+                const gameIdValue = joinGameIdInput.value.trim();
+                
+                if (!username) {
+                    updateStatus('Please enter a username first');
+                    return;
+                }
+                
+                if (!gameIdValue) {
+                    updateStatus('Please enter a game ID');
+                    return;
+                }
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    sendMessage('JOIN_GAME', { gameId: gameIdValue });
+                    updateStatus('Joining game...');
+                } else {
+                    updateStatus('Not connected to server');
+                }
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                if (game) {
+                    game.reset();
+                    if (board) board.position('start');
+                    
+                    moveHistory = [];
+                    updateMoveList();
+                    
+                    gameId = '';
+                    opponent = '';
+                    isGameActive = false;
+                    
+                    document.getElementById('game-id-info').style.display = 'none';
+                    document.getElementById('opponent-info').style.display = 'none';
+                    document.getElementById('resign-btn').disabled = true;
+                    document.getElementById('create-game-btn').disabled = false;
+                    document.getElementById('join-game-btn').disabled = false;
+                    document.getElementById('join-game-id').disabled = false;
+                    
+                    updateStatus('Board reset. Create or join a game to start playing.');
+                }
+            });
+            
+            resignBtn.addEventListener('click', () => {
+                if (isGameActive && gameId && socket) {
+                    sendMessage('RESIGN', { gameId });
+                    updateStatus('You resigned from the game.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
