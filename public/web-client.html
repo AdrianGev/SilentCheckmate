@@ -183,7 +183,7 @@
     </div>
 
     <!-- Load external libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chess.js@0.12.0/chess.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js"></script>
     <script src="chessboard.js"></script>
     
     <!-- Main client script -->
@@ -445,6 +445,17 @@
                 console.log('Chess game initialized');
             } catch (error) {
                 console.error('Error initializing chess game:', error);
+                // Try alternative initialization if the first one fails
+                try {
+                    if (typeof Chess === 'function') {
+                        game = new Chess();
+                    } else if (typeof Chess === 'object') {
+                        game = Chess.Chess ? new Chess.Chess() : Chess;
+                    }
+                    console.log('Chess game initialized with alternative method');
+                } catch (fallbackError) {
+                    console.error('Failed to initialize chess game with fallback:', fallbackError);
+                }
             }
         }
 
@@ -477,24 +488,40 @@
 
         // Chess piece drag start handler
         function onDragStart(source, piece, position, orientation) {
-            // Do not allow piece movement if the game is over
-            if (game && game.isGameOver()) return false;
+            console.log('onDragStart called:', { source, piece, position, orientation });
             
-            // Only allow the current player to move their pieces
-            if (!isGameActive) return false;
+            // Do not allow piece movement if the game is over
+            if (game && game.isGameOver()) {
+                console.log('Game is over, cannot move pieces');
+                return false;
+            }
+            
+            // For testing purposes, allow moving pieces even when not in an active game
+            if (!isGameActive) {
+                console.log('Game not active, but allowing moves for testing');
+                // Only allow white to move if not in a game (for testing)
+                if (piece.search(/^b/) !== -1) {
+                    console.log('Not allowing black pieces to move in test mode');
+                    return false;
+                }
+                return true;
+            }
             
             // Only allow the player to move their own pieces
             if ((playerColor === 'white' && piece.search(/^b/) !== -1) ||
                 (playerColor === 'black' && piece.search(/^w/) !== -1)) {
+                console.log('Not your piece color');
                 return false;
             }
             
             // Only allow moves if it's the player's turn
             if ((game.turn() === 'w' && playerColor !== 'white') ||
                 (game.turn() === 'b' && playerColor !== 'black')) {
+                console.log('Not your turn');
                 return false;
             }
             
+            console.log('Move allowed');
             return true;
         }
 
@@ -503,27 +530,37 @@
             // Check if the move is legal
             if (!game) return 'snapback';
             
-            const move = game.move({
-                from: source,
-                to: target,
-                promotion: 'q' // Always promote to queen for simplicity
-            });
-            
-            // If illegal move, snap back
-            if (move === null) return 'snapback';
-            
-            // Send the move to the server
-            if (isGameActive && gameId && socket) {
-                sendMessage('MAKE_MOVE', {
-                    gameId,
-                    move: { from: source, to: target },
-                    fen: game.fen()
+            try {
+                // Try to make the move
+                const move = game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q' // Always promote to queen for simplicity
                 });
-            }
-            
-            // Check for game over
-            if (game.isGameOver()) {
-                handleGameOver();
+                
+                // If illegal move, snap back
+                if (move === null) return 'snapback';
+                
+                console.log('Move made:', move);
+                
+                // Send the move to the server
+                if (isGameActive && gameId && socket) {
+                    sendMessage('MAKE_MOVE', {
+                        gameId,
+                        move: { from: source, to: target },
+                        fen: game.fen()
+                    });
+                }
+                
+                // Check for game over
+                if (game.isGameOver()) {
+                    handleGameOver();
+                }
+                
+                return; // Valid move, don't return 'snapback'
+            } catch (error) {
+                console.error('Error making move:', error);
+                return 'snapback';
             }
         }
 
