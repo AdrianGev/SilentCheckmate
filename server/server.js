@@ -45,6 +45,13 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 const games = {};
 const userSockets = new Map();
 
+// Store rooms for direct chess.js validation
+const rooms = new Map(); // gameId -> { chess, sockets:Set }
+function getRoom(id) {
+  if (!rooms.has(id)) rooms.set(id, { chess: new Chess(), sockets: new Set() });
+  return rooms.get(id);
+}
+
 // Helper to send JSON messages
 const sendJSON = (socket, data) => {
   if (socket.readyState === 1) {
@@ -90,6 +97,38 @@ wss.on("connection", (socket) => {
       return;
     }
     
+    // Handle both old and new message formats
+    if (message.t) {
+      // New format (t, gameId, from, to)
+      const msg = message;
+      
+      if (msg.t === "JOIN" && msg.gameId) {
+        const r = getRoom(msg.gameId);
+        r.sockets.add(socket);
+        socket._room = msg.gameId;
+        console.log("JOIN", msg.gameId);
+        socket.send(JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: null }));
+        return;
+      }
+      
+      if (msg.t === "MOVE" && socket._room && msg.gameId === socket._room) {
+        const r = getRoom(socket._room);
+        const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
+        if (!mv) {
+          socket.send(JSON.stringify({ t: "ILLEGAL" }));
+          return;
+        }
+        const payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+        console.log("MOVE", socket._room, mv.san);
+        for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
+        return;
+      }
+      
+      if (msg.t === "PING") socket.send(JSON.stringify({ t: "PONG" }));
+      return;
+    }
+    
+    // Original format (type, payload)
     const { type, payload } = message;
     
     // Handle different message types
