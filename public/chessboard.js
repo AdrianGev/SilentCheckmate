@@ -6,32 +6,35 @@
  * License: MIT
  */
 
-// This is a simplified version of chessboard.js for our Electron app
 (function (global) {
   'use strict'
 
-  // Constants
+  // constants
   const COLUMNS = 'abcdefgh'.split('')
   const ROWS = '12345678'.split('')
   
-  // Default configuration
+  // default configuration
   const DEFAULT_CONFIG = {
     position: 'start',
     orientation: 'white',
     showNotation: true,
     draggable: false,
     dropOffBoard: 'snapback',
-    pieceTheme: './img/chesspieces/wikipedia/{piece}.png',
+    pieceTheme: function(piece) {
+      const color = piece.charAt(0) === 'w' ? 'white' : 'black';
+      const pieceType = getPieceType(piece.charAt(1));
+      return `../pieces-basic-png/${color}-${pieceType}.png`;
+    },
     onDragStart: null,
     onDrop: null,
     onSnapEnd: null,
     onMoveEnd: null
   }
   
-  // FEN starting position
+  // fen starting position
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'
   
-  // Piece codes
+  // piece codes
   const PIECE_TYPES = {
     'k': 'king',
     'q': 'queen',
@@ -41,7 +44,19 @@
     'p': 'pawn'
   }
   
-  // Utility functions
+  // utility functions
+  function getPieceType(pieceCode) {
+    switch(pieceCode.toLowerCase()) {
+      case 'k': return 'king';
+      case 'q': return 'queen';
+      case 'r': return 'rook';
+      case 'b': return 'bishop';
+      case 'n': return 'knight';
+      case 'p': return 'pawn';
+      default: return 'pawn';
+    }
+  }
+  
   function deepCopy(obj) {
     return JSON.parse(JSON.stringify(obj))
   }
@@ -59,7 +74,7 @@
            COLUMNS.includes(square[0]) && ROWS.includes(square[1])
   }
   
-  // Convert FEN to position object
+  // convert fen to position object
   function fenToObj(fen) {
     if (!validFen(fen)) return false
     
@@ -96,7 +111,7 @@
     return position
   }
   
-  // Convert position object to FEN
+  // convert position object to fen
   function objToFen(obj) {
     if (!validPositionObject(obj)) return false
     
@@ -131,18 +146,18 @@
     return fen
   }
   
-  // Create the chessboard
+  // create the chessboard
   function createBoard(containerEl, config) {
-    // Create board container
+    // create board container
     const boardContainer = document.createElement('div')
     boardContainer.className = 'chessboard-container'
     
-    // Create board
+    // create board
     const boardEl = document.createElement('div')
     boardEl.className = 'chessboard'
     boardContainer.appendChild(boardEl)
     
-    // Create squares
+    // create squares
     for (let row = 8; row > 0; row--) {
       for (let col = 0; col < 8; col++) {
         const square = document.createElement('div')
@@ -176,7 +191,7 @@
     return boardEl
   }
   
-  // Create a piece element
+  // create a piece element
   function createPiece(piece, square) {
     const pieceEl = document.createElement('div')
     pieceEl.className = 'piece ' + piece
@@ -185,23 +200,23 @@
     return pieceEl
   }
   
-  // Main Chessboard constructor
+  // main chessboard constructor
   function ChessBoard(containerElOrId, config) {
-    // DOM elements
+    // dom elements
     let containerEl
     let boardEl
     
-    // State
+    // state
     let currentOrientation = 'white'
     let currentPosition = {}
     let draggedPiece = null
     let draggedPieceSource = null
     let isDragging = false
     
-    // Config
+    // config
     const cfg = Object.assign({}, DEFAULT_CONFIG, config)
     
-    // Methods
+    // methods
     function setOrientation(orientation) {
       if (orientation === 'black') {
         currentOrientation = 'black'
@@ -213,7 +228,7 @@
     }
     
     function position(position, useAnimation) {
-      // Get position as object
+      // get position as object
       let pos
       
       if (position === 'start') {
@@ -226,15 +241,15 @@
         return currentPosition
       }
       
-      // Set position
+      // set position
       currentPosition = pos
       
-      // Clear board
+      // clear board
       boardEl.querySelectorAll('.piece').forEach(piece => {
         piece.remove()
       })
       
-      // Add pieces
+      // add pieces
       for (const square in pos) {
         if (validSquare(square)) {
           const piece = pos[square]
@@ -258,12 +273,12 @@
     }
     
     function resize() {
-      // Implement resize logic if needed
+      // implement resize logic if needed
     }
     
-    // Initialize
+    // initialize
     function init() {
-      // Get container
+      // get container
       if (typeof containerElOrId === 'string') {
         containerEl = document.getElementById(containerElOrId)
       } else {
@@ -274,24 +289,24 @@
         throw new Error('Container element not found')
       }
       
-      // Create board
+      // create board
       boardEl = createBoard(containerEl, cfg)
       
-      // Set orientation
+      // set orientation
       setOrientation(cfg.orientation)
       
-      // Set position
+      // set position
       position(cfg.position)
       
-      // Set up drag and drop if enabled
+      // set up drag and drop if enabled
       if (cfg.draggable) {
         setupDragAndDrop()
       }
     }
     
-    // Drag and drop functionality
+    // drag and drop functionality
     function setupDragAndDrop() {
-      // Mouse down on piece
+      // mouse down on piece
       boardEl.addEventListener('mousedown', function(e) {
         const pieceEl = e.target.closest('.piece')
         if (!pieceEl) return
@@ -299,29 +314,29 @@
         const square = pieceEl.dataset.square
         const piece = pieceEl.dataset.piece
         
-        // Check if drag is allowed
+        // check if drag is allowed
         if (typeof cfg.onDragStart === 'function') {
           const result = cfg.onDragStart(square, piece, deepCopy(currentPosition), currentOrientation)
           if (result === false) return
         }
         
-        // Start dragging
+        // start dragging
         isDragging = true
         draggedPiece = pieceEl
         draggedPieceSource = square
         
-        // Style the piece
+        // style the piece
         pieceEl.classList.add('dragging')
         
-        // Prevent default to avoid text selection
+        // prevent default to avoid text selection
         e.preventDefault()
       })
       
-      // Mouse move
+      // mouse move
       document.addEventListener('mousemove', function(e) {
         if (!isDragging || !draggedPiece) return
         
-        // Move the piece
+        // move the piece
         const boardRect = boardEl.getBoundingClientRect()
         const squareSize = boardRect.width / 8
         
@@ -334,14 +349,14 @@
         draggedPiece.style.zIndex = 1000
       })
       
-      // Mouse up
+      // mouse up
       document.addEventListener('mouseup', function(e) {
         if (!isDragging || !draggedPiece) return
         
-        // Reset dragging state
+        // reset dragging state
         isDragging = false
         
-        // Get the target square
+        // get the target square
         const boardRect = boardEl.getBoundingClientRect()
         const squareSize = boardRect.width / 8
         
@@ -354,33 +369,33 @@
           targetSquare = COLUMNS[col] + (row + 1)
         }
         
-        // Handle the drop
+        // handle the drop
         if (targetSquare) {
-          // Call onDrop callback
+          // call onDrop callback
           if (typeof cfg.onDrop === 'function') {
             const result = cfg.onDrop(draggedPieceSource, targetSquare, draggedPiece.dataset.piece)
             
             if (result === 'snapback') {
-              // Snap back to source square
+              // snap back to source square
               snapbackDraggedPiece()
             } else {
-              // Move was accepted
+              // move was accepted
               dropDraggedPieceOnSquare(targetSquare)
             }
           } else {
-            // Default behavior: move the piece
+            // default behavior: move the piece
             dropDraggedPieceOnSquare(targetSquare)
           }
         } else {
-          // Dropped off the board
+          // dropped off the board
           if (cfg.dropOffBoard === 'snapback') {
             snapbackDraggedPiece()
           } else {
-            // Remove the piece
+            // remove the piece
             draggedPiece.remove()
             draggedPiece = null
             
-            // Update position
+            // update position
             delete currentPosition[draggedPieceSource]
           }
         }
@@ -388,14 +403,14 @@
     }
     
     function snapbackDraggedPiece() {
-      // Reset the piece position
+      // reset the piece position
       draggedPiece.classList.remove('dragging')
       draggedPiece.style.position = ''
       draggedPiece.style.left = ''
       draggedPiece.style.top = ''
       draggedPiece.style.zIndex = ''
       
-      // Call onSnapEnd callback
+      // call onSnapEnd callback
       if (typeof cfg.onSnapEnd === 'function') {
         cfg.onSnapEnd(draggedPieceSource, draggedPieceSource, draggedPiece.dataset.piece)
       }
@@ -404,15 +419,15 @@
     }
     
     function dropDraggedPieceOnSquare(square) {
-      // Update position
+      // update position
       const piece = draggedPiece.dataset.piece
       delete currentPosition[draggedPieceSource]
       currentPosition[square] = piece
       
-      // Update the DOM
+      // update the dom
       position(currentPosition)
       
-      // Call onSnapEnd callback
+      // call onSnapEnd callback
       if (typeof cfg.onSnapEnd === 'function') {
         cfg.onSnapEnd(draggedPieceSource, square, piece)
       }
@@ -420,10 +435,10 @@
       draggedPiece = null
     }
     
-    // Initialize the board
+    // initialize the board
     init()
     
-    // Public API
+    // public api
     return {
       position: position,
       orientation: setOrientation,
@@ -433,12 +448,12 @@
     }
   }
   
-  // Export
+  // export
   if (typeof window !== 'undefined') {
     window.Chessboard = ChessBoard
   }
   
-  // For CommonJS/Node.js
+  // for CommonJS/Node.js
   if (typeof exports !== 'undefined') {
     exports.Chessboard = ChessBoard
   }
