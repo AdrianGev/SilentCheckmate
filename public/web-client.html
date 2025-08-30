@@ -13,6 +13,20 @@
             padding: 0;
             background-color: #f0f0f0;
         }
+        
+        /* Styles for move hints */
+        .highlight-square {
+            box-shadow: inset 0 0 3px 3px yellow;
+        }
+        
+        .highlight-hint {
+            background: radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%);
+            border-radius: 50%;
+        }
+        
+        .highlight-capture {
+            box-shadow: inset 0 0 3px 3px red;
+        }
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -92,6 +106,12 @@
         }
         .game-info {
             margin-top: 20px;
+            text-align: center;
+        }
+        #move-hints {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
         }
         .move-list {
             height: 200px;
@@ -161,13 +181,11 @@
                         </div>
                     </div>
                     <div class="info-area">
-                        <div id="game-status" class="game-status">Welcome! Create or join a game to start playing.</div>
+                        <div id="player-info">Waiting for game...</div>
+                        <div id="game-status"></div>
+                        <div id="move-hints">Click on a piece to see possible moves</div>
                         <div id="game-id-info" class="game-info" style="display: none;">
                             <strong>Game ID:</strong> <span id="game-id"></span>
-                        </div>
-                        <div id="player-info" class="game-info">
-                            <strong>Player:</strong> <span id="player-username"></span>
-                            <div><strong>Color:</strong> <span id="player-color"></span></div>
                         </div>
                         <div id="opponent-info" class="game-info" style="display: none;">
                             <strong>Opponent:</strong> <span id="opponent-name"></span>
@@ -459,6 +477,10 @@
             }
         }
 
+        // Global variables for move highlighting
+        let selectedSquare = null;
+        let possibleMoves = [];
+        
         // Initialize the chessboard
         function initializeBoard() {
             try {
@@ -470,10 +492,19 @@
                     onDragStart: onDragStart,
                     onDrop: onDrop,
                     onSnapEnd: onSnapEnd,
+                    onMouseoverSquare: onMouseoverSquare,
+                    onMouseoutSquare: onMouseoutSquare,
+                    onSnapbackEnd: clearHighlights,
                     pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
                 };
                 
                 board = Chessboard('chessboard', config);
+                
+                // Add click handler for squares to show possible moves
+                $('#chessboard').on('click', '.square-55d63', function() {
+                    const square = $(this).attr('data-square');
+                    handleSquareClick(square);
+                });
                 
                 // Handle window resize
                 window.addEventListener('resize', () => {
@@ -486,6 +517,138 @@
             }
         }
 
+        // Function to get all possible moves for a piece at a given square
+        function getPossibleMoves(square) {
+            if (!game) return [];
+            
+            const moves = [];
+            const legalMoves = game.moves({ square: square, verbose: true });
+            
+            for (let i = 0; i < legalMoves.length; i++) {
+                moves.push(legalMoves[i].to);
+            }
+            
+            return moves;
+        }
+        
+        // Function to highlight possible moves
+        function highlightPossibleMoves(square) {
+            // Remove any existing highlights
+            clearHighlights();
+            
+            // Highlight the selected square
+            $(`#chessboard .square-${square}`).addClass('highlight-square');
+            
+            // Get possible moves for the piece at this square
+            possibleMoves = getPossibleMoves(square);
+            
+            // Highlight each possible move
+            for (let i = 0; i < possibleMoves.length; i++) {
+                const moveSquare = possibleMoves[i];
+                const $square = $(`#chessboard .square-${moveSquare}`);
+                
+                // Check if there's a piece on the target square (capture)
+                if ($square.find('.piece-417db').length > 0) {
+                    $square.addClass('highlight-capture');
+                } else {
+                    $square.addClass('highlight-hint');
+                }
+            }
+        }
+        
+        // Function to clear all highlights
+        function clearHighlights() {
+            $('#chessboard .square-55d63').removeClass('highlight-square highlight-hint highlight-capture');
+            selectedSquare = null;
+        }
+        
+        // Handle square click to show possible moves
+        function handleSquareClick(square) {
+            if (!game) return;
+            
+            // Get the piece on the clicked square
+            const piece = game.get(square);
+            
+            // If no piece is selected and the clicked square has a piece, highlight possible moves
+            if (!selectedSquare && piece) {
+                // Check if it's the player's piece
+                const pieceColor = piece.color === 'w' ? 'white' : 'black';
+                
+                // For testing, allow moving any piece
+                if (!isGameActive || (isGameActive && pieceColor === playerColor && 
+                    game.turn() === piece.color)) {
+                    selectedSquare = square;
+                    highlightPossibleMoves(square);
+                }
+            }
+            // If a piece is already selected and the clicked square is a possible move, make the move
+            else if (selectedSquare && possibleMoves.includes(square)) {
+                // Make the move
+                const move = game.move({
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q' // Always promote to queen for simplicity
+                });
+                
+                if (move) {
+                    // Update the board position
+                    board.position(game.fen());
+                    
+                    // Send the move to the server if in a game
+                    if (isGameActive && gameId && socket) {
+                        sendMessage('MAKE_MOVE', {
+                            gameId,
+                            move: { from: selectedSquare, to: square },
+                            fen: game.fen()
+                        });
+                    }
+                    
+                    // Check for game over
+                    if (game.isGameOver()) {
+                        handleGameOver();
+                    }
+                }
+                
+                // Clear highlights after move
+                clearHighlights();
+            }
+            // If a piece is selected and the clicked square is the same piece, deselect it
+            else if (selectedSquare === square) {
+                clearHighlights();
+            }
+            // If a piece is selected and the clicked square is another piece of the same color, select the new piece
+            else if (selectedSquare && piece && ((piece.color === 'w' && game.turn() === 'w') || 
+                    (piece.color === 'b' && game.turn() === 'b'))) {
+                selectedSquare = square;
+                highlightPossibleMoves(square);
+            }
+            // Otherwise, clear highlights
+            else {
+                clearHighlights();
+            }
+        }
+        
+        // Mouse over square handler
+        function onMouseoverSquare(square, piece) {
+            // Only show hints if no square is currently selected
+            if (!selectedSquare && piece) {
+                const moves = getPossibleMoves(square);
+                
+                // Highlight the possible moves lightly
+                for (let i = 0; i < moves.length; i++) {
+                    $(`#chessboard .square-${moves[i]}`).addClass('highlight-hint');
+                }
+            }
+        }
+        
+        // Mouse out square handler
+        function onMouseoutSquare(square, piece) {
+            // Only remove hints if no square is selected
+            if (!selectedSquare) {
+                $('#chessboard .square-55d63').removeClass('highlight-hint highlight-capture');
+            }
+        }
+        
         // Chess piece drag start handler
         function onDragStart(source, piece, position, orientation) {
             console.log('onDragStart called:', { source, piece, position, orientation });
@@ -496,14 +659,11 @@
                 return false;
             }
             
-            // For testing purposes, allow moving pieces even when not in an active game
+            // For testing purposes, allow all pieces to be moved when not in an active game
             if (!isGameActive) {
-                console.log('Game not active, but allowing moves for testing');
-                // Only allow white to move if not in a game (for testing)
-                if (piece.search(/^b/) !== -1) {
-                    console.log('Not allowing black pieces to move in test mode');
-                    return false;
-                }
+                console.log('Game not active, allowing all moves for testing');
+                // Highlight possible moves when dragging starts
+                highlightPossibleMoves(source);
                 return true;
             }
             
@@ -521,16 +681,24 @@
                 return false;
             }
             
+            // Highlight possible moves when dragging starts
+            highlightPossibleMoves(source);
+            
             console.log('Move allowed');
             return true;
         }
 
         // Chess piece drop handler
         function onDrop(source, target) {
+            // Clear all highlights
+            clearHighlights();
+            
             // Check if the move is legal
             if (!game) return 'snapback';
             
             try {
+                console.log(`Attempting move from ${source} to ${target}`);
+                
                 // Try to make the move
                 const move = game.move({
                     from: source,
@@ -538,12 +706,15 @@
                     promotion: 'q' // Always promote to queen for simplicity
                 });
                 
-                // If illegal move, snap back
-                if (move === null) return 'snapback';
+                // If the move is illegal, return 'snapback'
+                if (move === null) {
+                    console.log('Illegal move');
+                    return 'snapback';
+                }
                 
                 console.log('Move made:', move);
                 
-                // Send the move to the server
+                // Send the move to the server if in a game
                 if (isGameActive && gameId && socket) {
                     sendMessage('MAKE_MOVE', {
                         gameId,
@@ -557,13 +728,13 @@
                     handleGameOver();
                 }
                 
-                return; // Valid move, don't return 'snapback'
+                return true;
             } catch (error) {
                 console.error('Error making move:', error);
                 return 'snapback';
             }
         }
-
+        
         // After a piece snap animation completes
         function onSnapEnd() {
             if (board && game) {
@@ -571,23 +742,30 @@
             }
         }
 
-        // Handle game over conditions
+        // Handle game over scenarios
         function handleGameOver() {
             if (!game) return;
             
-            isGameActive = false;
-            
             if (game.isCheckmate()) {
                 const winner = game.turn() === 'w' ? 'Black' : 'White';
+                alert(`Checkmate! ${winner} wins!`);
                 updateStatus(`Checkmate! ${winner} wins!`);
             } else if (game.isDraw()) {
-                updateStatus('Game over. Draw.');
-            } else if (game.isStalemate()) {
-                updateStatus('Game over. Stalemate.');
-            } else if (game.isThreefoldRepetition()) {
-                updateStatus('Game over. Draw by repetition.');
-            } else if (game.isInsufficientMaterial()) {
-                updateStatus('Game over. Draw by insufficient material.');
+                let reason = '';
+                if (game.isStalemate()) {
+                    reason = 'Stalemate';
+                } else if (game.isThreefoldRepetition()) {
+                    reason = 'Threefold Repetition';
+                } else if (game.isInsufficientMaterial()) {
+                    reason = 'Insufficient Material';
+                } else {
+                    reason = '50-move rule';
+                }
+                alert(`Game ended in draw! (${reason})`);
+                updateStatus(`Game over. Draw by ${reason.toLowerCase()}.`);
+            } else {
+                alert('Game over!');
+                updateStatus('Game over.');
             }
             
             // Enable/disable buttons
@@ -596,12 +774,12 @@
             document.getElementById('join-game-id').disabled = false;
             document.getElementById('resign-btn').disabled = true;
         }
-
+        
         // Update the game status message
         function updateStatus(message) {
             const statusEl = document.getElementById('game-status');
             if (statusEl) {
-                statusEl.textContent = message;
+                statusEl.textContent = message || '';
             }
             console.log('Status:', message);
         }
