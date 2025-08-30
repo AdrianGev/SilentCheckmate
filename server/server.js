@@ -314,6 +314,110 @@ wss.on("connection", (socket) => {
         });
         break;
         
+      case "OFFER_DRAW":
+        const { gameId: drawGameId } = payload;
+        
+        // Check if game exists
+        if (!games[drawGameId]) {
+          sendJSON(socket, { 
+            type: "ERROR", 
+            payload: { message: "Game not found" },
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
+        // Store who offered the draw
+        games[drawGameId].drawOfferedBy = socket.username;
+        
+        // Notify opponent
+        const drawOpponentSocket = socket.username === games[drawGameId].creator 
+          ? games[drawGameId].opponentSocket 
+          : games[drawGameId].creatorSocket;
+        
+        if (drawOpponentSocket) {
+          sendJSON(drawOpponentSocket, {
+            type: "DRAW_OFFERED",
+            payload: {
+              gameId: drawGameId,
+              offeredBy: socket.username
+            },
+            timestamp: Date.now()
+          });
+        }
+        break;
+        
+      case "ACCEPT_DRAW":
+        const { gameId: acceptDrawGameId } = payload;
+        
+        // Check if game exists
+        if (!games[acceptDrawGameId]) {
+          sendJSON(socket, { 
+            type: "ERROR", 
+            payload: { message: "Game not found" },
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
+        // Check if draw was offered
+        if (!games[acceptDrawGameId].drawOfferedBy) {
+          sendJSON(socket, { 
+            type: "ERROR", 
+            payload: { message: "No draw was offered" },
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
+        // Update game status
+        games[acceptDrawGameId].status = "completed";
+        
+        // Notify all players
+        broadcastToGame(acceptDrawGameId, {
+          type: "GAME_OVER",
+          payload: {
+            reason: "draw_agreement",
+            result: "draw"
+          },
+          timestamp: Date.now()
+        });
+        break;
+        
+      case "DECLINE_DRAW":
+        const { gameId: declineDrawGameId } = payload;
+        
+        // Check if game exists
+        if (!games[declineDrawGameId]) {
+          sendJSON(socket, { 
+            type: "ERROR", 
+            payload: { message: "Game not found" },
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
+        // Clear draw offer
+        const drawOfferedBy = games[declineDrawGameId].drawOfferedBy;
+        games[declineDrawGameId].drawOfferedBy = null;
+        
+        // Notify the player who offered the draw
+        const offererSocket = drawOfferedBy === games[declineDrawGameId].creator 
+          ? games[declineDrawGameId].creatorSocket 
+          : games[declineDrawGameId].opponentSocket;
+        
+        if (offererSocket) {
+          sendJSON(offererSocket, {
+            type: "DRAW_DECLINED",
+            payload: {
+              gameId: declineDrawGameId,
+              declinedBy: socket.username
+            },
+            timestamp: Date.now()
+          });
+        }
+        break;
+        
       default:
         console.log("Unknown message type:", type);
     }

@@ -107,6 +107,56 @@
             padding: 10px;
             margin-top: 10px;
         }
+        /* Game result popup */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .popup h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .popup p {
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        .popup-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .popup-buttons button {
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .draw-button {
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        .draw-button:hover {
+            background-color: #ec971f;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +189,7 @@
                 <button id="join-game-btn">Join Game</button>
                 <button id="reset-btn">Reset Board</button>
                 <button id="resign-btn" disabled>Resign</button>
+                <button id="offer-draw-btn" disabled class="draw-button">Offer Draw</button>
             </div>
             
             <chess-board id="board"
@@ -169,6 +220,30 @@
             <div class="settings-buttons">
                 <button id="save-settings-btn">Save</button>
                 <button id="cancel-settings-btn">Cancel</button>
+            </div>
+        </div>
+        
+        <!-- Game Result Popup -->
+        <div id="result-popup" class="popup-overlay">
+            <div class="popup">
+                <h2 id="result-title">Game Over</h2>
+                <p id="result-message">The game has ended.</p>
+                <div class="popup-buttons">
+                    <button id="new-game-btn">New Game</button>
+                    <button id="close-popup-btn">Close</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Draw Offer Popup -->
+        <div id="draw-popup" class="popup-overlay">
+            <div class="popup">
+                <h2>Draw Offered</h2>
+                <p id="draw-message">Your opponent has offered a draw.</p>
+                <div class="popup-buttons">
+                    <button id="accept-draw-btn">Accept</button>
+                    <button id="decline-draw-btn">Decline</button>
+                </div>
             </div>
         </div>
     </div>
@@ -279,6 +354,7 @@
                     document.getElementById('join-game-btn').disabled = true;
                     document.getElementById('join-game-id').disabled = true;
                     document.getElementById('resign-btn').disabled = false;
+                    document.getElementById('offer-draw-btn').disabled = false;
                     break;
                     
                 case 'GAME_JOINED':
@@ -295,6 +371,7 @@
                     document.getElementById('join-game-btn').disabled = true;
                     document.getElementById('join-game-id').disabled = true;
                     document.getElementById('resign-btn').disabled = false;
+                    document.getElementById('offer-draw-btn').disabled = !isGameActive;
                     
                     isGameActive = true;
                     
@@ -309,6 +386,7 @@
                     console.log('Opponent joined:', payload);
                     updateStatus(`${payload.opponent} joined the game. Your turn.`);
                     isGameActive = true;
+                    document.getElementById('offer-draw-btn').disabled = false;
                     break;
                     
                 case 'GAME_OVER':
@@ -316,25 +394,63 @@
                     isGameActive = false;
                     
                     let message = '';
+                    let title = 'Game Over';
+                    
                     if (payload.reason === 'checkmate') {
-                        message = `Checkmate! ${payload.winner} wins!`;
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `You won by checkmate against ${payload.loser || 'opponent'}!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `${payload.winner} won by checkmate.`;
+                        }
                     } else if (payload.reason === 'resignation') {
-                        message = `${payload.loser} resigned. ${payload.winner} wins!`;
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `${payload.loser} resigned. You win!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `You resigned. ${payload.winner} wins.`;
+                        }
                     } else if (payload.reason === 'draw') {
+                        title = 'Draw';
                         message = 'Game ended in a draw.';
                     } else if (payload.reason === 'stalemate') {
+                        title = 'Draw';
                         message = 'Game ended in stalemate.';
+                    } else if (payload.reason === 'draw_agreement') {
+                        title = 'Draw';
+                        message = 'Game ended by mutual agreement.';
                     } else {
-                        message = `Game over. ${payload.winner} wins!`;
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `You won against ${payload.loser || 'opponent'}!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `${payload.winner} won the game.`;
+                        }
                     }
                     
                     updateStatus(message);
+                    showGameResultPopup(title, message);
                     
                     // Enable/disable buttons
                     document.getElementById('create-game-btn').disabled = false;
                     document.getElementById('join-game-btn').disabled = false;
                     document.getElementById('join-game-id').disabled = false;
                     document.getElementById('resign-btn').disabled = true;
+                    document.getElementById('offer-draw-btn').disabled = true;
+                    break;
+                    
+                case 'DRAW_OFFERED':
+                    console.log('Draw offered:', payload);
+                    showDrawOfferPopup(payload.offeredBy);
+                    updateStatus(`${payload.offeredBy} offered a draw.`);
+                    break;
+                    
+                case 'DRAW_DECLINED':
+                    console.log('Draw declined:', payload);
+                    updateStatus(`${payload.declinedBy} declined the draw offer.`);
                     break;
                     
                 case 'OPPONENT_DISCONNECTED':
@@ -400,6 +516,21 @@
             }
         }
         
+        // Show game result popup
+        function showGameResultPopup(title, message) {
+            document.getElementById('result-title').textContent = title;
+            document.getElementById('result-message').textContent = message;
+            const popup = document.getElementById('result-popup');
+            popup.style.display = 'flex';
+        }
+        
+        // Show draw offer popup
+        function showDrawOfferPopup(opponent) {
+            document.getElementById('draw-message').textContent = `${opponent} has offered a draw.`;
+            const popup = document.getElementById('draw-popup');
+            popup.style.display = 'flex';
+        }
+        
         // DOM ready handler
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM fully loaded');
@@ -422,6 +553,46 @@
             
             cancelSettingsBtn.addEventListener('click', () => {
                 document.getElementById('server-settings').style.display = 'none';
+            });
+            
+            // Game result popup buttons
+            document.getElementById('new-game-btn').addEventListener('click', () => {
+                document.getElementById('result-popup').style.display = 'none';
+                document.getElementById('create-game-btn').click();
+            });
+            
+            document.getElementById('close-popup-btn').addEventListener('click', () => {
+                document.getElementById('result-popup').style.display = 'none';
+            });
+            
+            // Draw offer popup buttons
+            document.getElementById('accept-draw-btn').addEventListener('click', () => {
+                document.getElementById('draw-popup').style.display = 'none';
+                if (socket && socket.readyState === WebSocket.OPEN && gameId) {
+                    socket.send(JSON.stringify({ type: 'ACCEPT_DRAW', payload: { gameId } }));
+                }
+            });
+            
+            document.getElementById('decline-draw-btn').addEventListener('click', () => {
+                document.getElementById('draw-popup').style.display = 'none';
+                if (socket && socket.readyState === WebSocket.OPEN && gameId) {
+                    socket.send(JSON.stringify({ type: 'DECLINE_DRAW', payload: { gameId } }));
+                }
+            });
+            
+            // Offer draw button
+            document.getElementById('offer-draw-btn').addEventListener('click', () => {
+                if (!gameId || !isGameActive) {
+                    updateStatus('No active game');
+                    return;
+                }
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'OFFER_DRAW', payload: { gameId } }));
+                    updateStatus('Draw offered to opponent');
+                } else {
+                    updateStatus('Not connected to server');
+                }
             });
             
             // Login form
