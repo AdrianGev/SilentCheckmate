@@ -1,7 +1,7 @@
 // API routes for authentication and ELO rating management
 const { Router } = require('express');
 const { z } = require('zod');
-const { query } = require('./db');
+const { query, pool } = require('./db');
 const { 
   argon2, 
   signAccessToken, 
@@ -13,6 +13,42 @@ const {
 } = require('./auth');
 
 const router = Router();
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Database test endpoint
+router.get('/dbtest', async (req, res) => {
+  try {
+    const result = await query('SELECT NOW() as time');
+    res.json({ 
+      status: 'ok', 
+      dbConnected: true,
+      timestamp: result[0].time,
+      env: {
+        nodeEnv: process.env.NODE_ENV,
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        hasRefreshSecret: !!process.env.REFRESH_SECRET,
+        hasDatabaseUrl: !!process.env.DATABASE_URL
+      }
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      dbConnected: false,
+      message: error.message,
+      env: {
+        nodeEnv: process.env.NODE_ENV,
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        hasRefreshSecret: !!process.env.REFRESH_SECRET,
+        hasDatabaseUrl: !!process.env.DATABASE_URL
+      }
+    });
+  }
+});
 
 // Validation schemas
 const registerSchema = z.object({
@@ -72,7 +108,10 @@ router.post('/auth/register', async (req, res) => {
       return res.status(409).json({ error: 'Username or email already taken' });
     }
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Server error during registration' });
+    console.error('Error details:', error.stack);
+    console.error('Error message:', error.message);
+    console.error('Request body:', JSON.stringify(req.body));
+    res.status(500).json({ error: 'Server error during registration: ' + error.message });
   }
 });
 
