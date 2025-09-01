@@ -1,25 +1,22 @@
 // Main server entry point
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import cors from 'cors';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import { WebSocketServer } from 'ws';
-import http from 'http';
-import { v4 as uuidv4 } from 'uuid';
-import { Chess } from 'chess.js';
-import apiRoutes from './routes.js';
-import { pool } from './db.js';
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
+const dotenv = require('dotenv');
+const { WebSocketServer } = require('ws');
+const http = require('http');
+const { v4: uuidv4 } = require('uuid');
+const { Chess } = require('chess.js');
+const apiRoutes = require('./routes');
+const { pool } = require('./db');
 
 // Load environment variables
 dotenv.config();
 
-// ES module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname is available in CommonJS by default
 
 // Create Express app
 const app = express();
@@ -638,4 +635,4 @@ function createServer() {
 }
 
 // Export the createServer function
-export { createServer };
+module.exports = { createServer };

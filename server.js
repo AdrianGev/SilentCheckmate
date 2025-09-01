@@ -6,8 +6,8 @@
  * which includes PostgreSQL database integration, authentication, and ELO rating.
  */
 
-// Use ES module syntax
-import { createServer } from './server/index.js';
+// Use CommonJS syntax
+const { createServer } = require('./server/index');
 
 // Start the server
 const PORT = process.env.PORT || 3001;
@@ -18,4 +18,4 @@ server.listen(PORT, () => {
 });
 
 // Export the server for use in other files (e.g., tests)
-export default server;
+module.exports = server;

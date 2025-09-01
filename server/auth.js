@@ -1,8 +1,8 @@
 // Authentication utilities
-import argon2 from 'argon2';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import dotenv from 'dotenv';
+const argon2 = require('argon2');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const dotenv = require('dotenv');
 
 dotenv.config();
 
@@ -94,7 +94,7 @@ function requireAuth(req, res, next) {
   }
 }
 
-export {
+module.exports = {
   argon2,
   jwt,
   signAccessToken,

@@ -1,8 +1,8 @@
 // API routes for authentication and ELO rating management
-import { Router } from 'express';
-import { z } from 'zod';
-import { query } from './db.js';
-import { 
+const { Router } = require('express');
+const { z } = require('zod');
+const { query } = require('./db');
+const { 
   argon2, 
   signAccessToken, 
   signRefreshToken, 
@@ -10,7 +10,7 @@ import {
   setAuthCookies, 
   requireAuth,
   jwt 
-} from './auth.js';
+} = require('./auth');
 
 const router = Router();
 
@@ -436,4 +436,4 @@ function calculateEloChanges(userElo, opponentElo, result) {
   return { userEloChange, opponentEloChange };
 }
 
-export default router;
+module.exports = router;

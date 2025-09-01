@@ -12,7 +12,6 @@
   "keywords": [],
   "author": "Silent Checkmate Team",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "chess.js": "^1.4.0",
     "concurrently": "^8.2.2",

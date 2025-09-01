@@ -1,26 +1,23 @@
 {
   "name": "silentcheckmate-server",
-  "version": "0.1.0",
-  "private": false,
-  "type": "module",
+  "private": true,
   "engines": { "node": ">=18" },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "ws": "^8.18.0",
-    "chess.js": "^1.0.0-beta.6",
-    "uuid": "^9.0.1",
-    "pg": "^8.11.3",
-    "dotenv": "^16.3.1",
-    "helmet": "^7.1.0",
-    "express-rate-limit": "^7.1.5",
-    "zod": "^3.22.4",
-    "jsonwebtoken": "^9.0.2",
     "argon2": "^0.31.2",
-    "cookie-parser": "^1.4.6"
+    "chess.js": "^1.0.0-beta.6",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "uuid": "^9.0.1",
+    "ws": "^8.18.0",
+    "zod": "^3.25.76"
   }
 }

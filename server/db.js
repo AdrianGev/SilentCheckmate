@@ -1,6 +1,6 @@
 // Database connection module
-import pg from 'pg';
-import dotenv from 'dotenv';
+const pg = require('pg');
+const dotenv = require('dotenv');
 
 dotenv.config();
 
@@ -27,4 +27,4 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-export { pool, query };
+module.exports = { pool, query };
