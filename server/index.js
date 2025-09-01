@@ -1,28 +1,21 @@
-// Main server entry point
+require('dotenv').config();
 const express = require('express');
-const path = require('path');
-const cors = require('cors');
 const helmet = require('helmet');
+const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
-const { WebSocketServer } = require('ws');
+const { Pool } = require('pg');
+const path = require('path');
 const http = require('http');
+const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const { Chess } = require('chess.js');
 const apiRoutes = require('./routes');
-const { pool } = require('./db');
 
-// Load environment variables
-dotenv.config();
-
-// __dirname is available in CommonJS by default
-
-// Create Express app
 const app = express();
 const server = http.createServer(app);
 
-// Apply middleware
+// --- middleware ---
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -30,7 +23,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", "wss:"],
+      connectSrc: ["'self'", "wss:", "https://silentcheckmate.onrender.com"],
     },
   },
 }));
@@ -42,18 +35,31 @@ app.use(cors({
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
+app.use(rateLimit({ windowMs: 15*60*1000, max: 300 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // limit each IP to 300 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
+// --- db ---
+if (!process.env.DATABASE_URL) {
+  console.error('Missing DATABASE_URL');
+  process.exit(1); // only exit on failure
+}
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
-app.use('/auth', limiter);
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Health check and DB test endpoints
+app.get('/health', (_req, res) => res.send('ok'));
+app.get('/dbtest', async (_req, res) => {
+  try {
+    const { rows } = await pool.query('select now() as ts');
+    res.json({ ok: true, ts: rows[0].ts });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // API routes
 app.use('/api', apiRoutes);
@@ -61,11 +67,6 @@ app.use('/api', apiRoutes);
 // Root route redirects to chess client
 app.get('/', (req, res) => {
   res.redirect('/chess-client.html');
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.send('ok');
 });
 
 // WebSocket server setup
@@ -626,6 +627,20 @@ function calculateEloChanges(userElo, opponentElo, result) {
   return { userEloChange, opponentEloChange };
 }
 
+// --- startup ---
+(async () => {
+  try {
+    const { rows } = await pool.query('select now() as ts');
+    console.log('Database connected:', rows[0].ts);
+    // IMPORTANT: DO NOT process.exit(0) here
+    const port = process.env.PORT || 3000;
+    server.listen(port, () => console.log('API listening on', port));
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    process.exit(1); // exit only on failure
+  }
+})();
+
 /**
  * Create and configure the server
  * @returns {http.Server} The configured HTTP server
@@ -635,4 +650,4 @@ function createServer() {
 }
 
 // Export the createServer function
-module.exports = { createServer };
+module.exports = { createServer, pool };
