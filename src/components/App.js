@@ -1,107 +1,80 @@
-const React = require('react');
-const { useState, useEffect, useCallback } = React;
-// Use global Chess object from CDN
-// const { Chess } = require('chess.js');
-// const { Chessboard } = require('react-chessboard');
-// const io = require('socket.io-client');
-const Login = require('./Login');
-const GameControls = require('./GameControls');
-const GameInfo = require('./GameInfo');
-const ServerConnection = require('./ServerConnection');
+import React, { useState, useEffect, useRef } from 'react';
+import ChessBoard from './ChessBoard';
+import GameControls from './GameControls';
+import GameInfo from './GameInfo';
+import '../styles/App.css';
 
-// Main App component
-const ChessApp = ({ sendMessage, isConnected }) => {
+const App = () => {
   // State variables
-  const [game, setGame] = useState(new window.Chess());
-  const [username, setUsername] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [gameId, setGameId] = useState('');
+  const [username, setUsername] = useState(localStorage.getItem('username') || 'Player');
+  const [gameId, setGameId] = useState(null);
+  const [opponent, setOpponent] = useState(null);
   const [playerColor, setPlayerColor] = useState('white');
-  const [opponent, setOpponent] = useState('');
-  const [status, setStatus] = useState('Waiting for opponent...');
-  // No longer need socket state as it's managed by ServerConnection
+  const [status, setStatus] = useState('Ready to play');
   const [moveHistory, setMoveHistory] = useState([]);
   const [isGameActive, setIsGameActive] = useState(false);
-
-  // Initialize chessboard
+  const [position, setPosition] = useState('start');
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [gameResult, setGameResult] = useState(null);
+  const [socket, setSocket] = useState(null);
+  
+  const chessBoardRef = useRef(null);
+  
+  // Initialize WebSocket connection
   useEffect(() => {
-    if (isLoggedIn) {
-      // Initialize the chessboard when logged in
-      let board = null;
-      const config = {
-        draggable: true,
-        position: game.fen(),
-        orientation: playerColor === 'black' ? 'black' : 'white',
-        onDragStart: (source, piece) => {
-          // Only allow the player to drag their own pieces
-          if (!isGameActive) return false;
-          if ((game.turn() === 'w' && playerColor !== 'white') ||
-              (game.turn() === 'b' && playerColor !== 'black')) {
-            return false;
-          }
-          // Don't allow moving pieces if it's not your turn
-          if ((playerColor === 'white' && piece.search(/^b/) !== -1) ||
-              (playerColor === 'black' && piece.search(/^w/) !== -1)) {
-            return false;
-          }
-          return true;
-        },
-        onDrop: (source, target) => {
-          // Try to make the move
-          const move = game.move({
-            from: source,
-            to: target,
-            promotion: 'q' // Always promote to queen for simplicity
-          });
-
-          // If the move is invalid
-          if (move === null) return 'snapback';
-
-          // Update the game state
-          setGame(new window.Chess(game.fen()));
-
-          // Send the move to the server
-          if (isConnected) {
-            sendMessage('MAKE_MOVE', {
-              gameId,
-              move,
-              fen: game.fen()
-            });
-          }
-
-          // Update move history
-          setMoveHistory(prev => [...prev, `${username}: ${source} to ${target}`]);
-
-          // Check game status
-          if (game.isGameOver()) {
-            if (game.isCheckmate()) {
-              setStatus(`Checkmate! ${username} wins!`);
-            } else if (game.isDraw()) {
-              setStatus('Game ended in a draw');
-            } else {
-              setStatus('Game over');
-            }
-            setIsGameActive(false);
-          }
-        }
-      };
-
-      // Initialize the board
-      if (window.Chessboard) {
-        board = window.Chessboard('chessboard', config);
-        
-        // Store the board in a ref so we can access it later
-        window.chessboardInstance = board;
+    const serverUrl = localStorage.getItem('SERVER_URL') || 'https://silentcheckmate.onrender.com';
+    const wsUrl = serverUrl.replace(/^http/, m => m === "https" ? "wss" : "ws") + "/ws";
+    
+    const newSocket = new WebSocket(wsUrl);
+    
+    newSocket.onopen = () => {
+      console.log("WebSocket connected");
+      setStatus("Connected to server");
+      
+      // Send login message with username if available
+      if (username) {
+        newSocket.send(JSON.stringify({ type: "LOGIN", payload: { username } }));
       }
-
-      // Clean up function
-      return () => {
-        if (board && board.destroy) {
-          board.destroy();
+      
+      // Keep-alive ping
+      const pingInterval = setInterval(() => {
+        if (newSocket.readyState === 1) {
+          newSocket.send(JSON.stringify({ t: "PING" }));
         }
-      };
-    }
-  }, [isLoggedIn, game, playerColor, isGameActive, gameId, username, isConnected]);
+      }, 25000);
+      
+      // Store interval ID for cleanup
+      newSocket.pingInterval = pingInterval;
+    };
+    
+    newSocket.onmessage = handleSocketMessage;
+    
+    newSocket.onclose = () => {
+      console.log("WebSocket disconnected");
+      setStatus("Disconnected from server. Reconnecting...");
+      clearInterval(newSocket.pingInterval);
+      
+      // Reconnect after a delay
+      setTimeout(() => {
+        setSocket(null); // This will trigger the useEffect to run again
+      }, 2000);
+    };
+    
+    newSocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setStatus("Connection error");
+    };
+    
+    setSocket(newSocket);
+    
+    // Cleanup on unmount
+    return () => {
+      if (newSocket) {
+        clearInterval(newSocket.pingInterval);
+        newSocket.close();
+      }
+    };
+  }, [username]); // Re-run when username changes or socket is null
 
   // Handle WebSocket messages - expose to ref
   const handleMessage = useCallback((message) => {
@@ -140,16 +113,16 @@ const ChessApp = ({ sendMessage, isConnected }) => {
         const newGame = new window.Chess(payload.fen);
         setGame(newGame);
         
-        // Update the board position if the chessboard instance exists
+        // update the board position if the chessboard instance exists
         if (window.chessboardInstance) {
           window.chessboardInstance.position(payload.fen);
         }
         
-        // Update move history
+        // update move history
         const lastMove = payload.move;
         setMoveHistory(prev => [...prev, `${payload.player}: ${lastMove.from} to ${lastMove.to}`]);
         
-        // Check game status
+        // check game status
         if (newGame.isGameOver()) {
           if (newGame.isCheckmate()) {
             setStatus(`Checkmate! ${payload.player} wins!`);
@@ -190,7 +163,7 @@ const ChessApp = ({ sendMessage, isConnected }) => {
     }
   }, []);
   
-  // Make handleMessage available globally
+  // make handleMessage available globally
   React.useEffect(() => {
     window.handleChessMessage = handleMessage;
     return () => {
@@ -198,87 +171,111 @@ const ChessApp = ({ sendMessage, isConnected }) => {
     };
   }, [handleMessage]);
   
-  // Effect to send login message when logged in
+  // effect to send login message when logged in
   useEffect(() => {
     if (isLoggedIn && isConnected) {
       sendMessage('LOGIN', { username });
     }
   }, [isLoggedIn, isConnected, username, sendMessage]);
 
-  // Handle piece movement is now handled in the chessboard initialization
+  // handle piece movement is now handled in the chessboard initialization
 
-  // Handle login
+  // handle login
   const handleLogin = (user) => {
     setUsername(user);
     setIsLoggedIn(true);
     
-    // Login message will be sent by the effect above
+    // login message will be sent by the effect above
   };
 
-  // Create a new game
   const createGame = () => {
-    if (isConnected) {
-      sendMessage('CREATE_GAME', {});
-      setGame(new window.Chess());
-      setMoveHistory([]);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "CREATE_GAME" }));
+      setStatus("Creating new game...");
+    } else {
+      setStatus("Not connected to server. Please try again.");
     }
   };
-
+  
   // Join an existing game
   const joinGame = (id) => {
-    if (isConnected && id) {
-      sendMessage('JOIN_GAME', { gameId: id });
-      setGameId(id);
-      setGame(new window.Chess());
-      setMoveHistory([]);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "JOIN_GAME", payload: { gameId: id } }));
+      setStatus(`Joining game ${id}...`);
+    } else {
+      setStatus("Not connected to server. Please try again.");
     }
   };
-
-  // Reset the game
+  
+  // Reset the board
   const resetGame = () => {
-    const newGame = new window.Chess();
-    setGame(newGame);
+    setPosition("start");
     setMoveHistory([]);
-    setStatus('Game reset. Create or join a game to start playing.');
-    setIsGameActive(false);
-    setGameId('');
-    setOpponent('');
-  };
-
-  // Resign from the game
-  const resignGame = () => {
-    if (isConnected && gameId) {
-      sendMessage('RESIGN', { gameId });
-      setStatus(`You resigned. ${opponent} wins.`);
-      setIsGameActive(false);
+    setStatus("Board reset");
+    
+    // If in a game, rejoin to get the current state
+    if (isGameActive && gameId && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ t: "JOIN", gameId }));
     }
   };
-
+  
+  // Resign from the current game
+  const resignGame = () => {
+    if (isGameActive && gameId && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "RESIGN", payload: { gameId } }));
+      setStatus("You resigned");
+    }
+  };
+  
+  // Offer a draw
+  const offerDraw = () => {
+    if (isGameActive && gameId && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "OFFER_DRAW", payload: { gameId } }));
+      setStatus("You offered a draw");
+    }
+  };
+  
+  // Handle move from the chessboard
+  const handleMove = (move, fen) => {
+    if (isGameActive && gameId && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "MAKE_MOVE",
+        payload: {
+          gameId,
+          move: move.san,
+          fen
+        }
+      }));
+    }
+  };
+  
   return (
     <div className="app-container">
-      <div className="header">
-        <h1>Silent Checkmate</h1>
-      </div>
-
-      {!isLoggedIn ? (
-        <Login onLogin={handleLogin} />
-      ) : (
-        <div className="game-container">
-          <GameInfo 
-            username={username} 
-            opponent={opponent} 
-            status={status} 
-            gameId={gameId} 
-            playerColor={playerColor}
-            moveHistory={moveHistory}
+      <header className="app-header">
+        <h1>SilentCheckmate</h1>
+        <div className="user-info">
+          <span className="username">{username}</span>
+        </div>
+      </header>
+      
+      <main className="app-content">
+        <div className="board-container">
+          <ChessBoard
+            ref={chessBoardRef}
+            position={position}
+            orientation={playerColor}
+            onMove={handleMove}
+            gameId={gameId}
+            socket={socket}
+            disabled={!isGameActive}
           />
-          
-          <div className="chessboard">
-            <div id="chessboard" className="chess-board" style={{ width: '400px', height: '400px' }}></div>
-          </div>
-          
-          <GameControls 
-            createGame={createGame} 
+        </div>
+        
+        <div className="side-panel">
+          <GameControls
+            createGame={createGame}
+            joinGame={joinGame}
+            resetGame={resetGame}
             joinGame={joinGame} 
             resetGame={resetGame} 
             resignGame={resignGame}
@@ -290,7 +287,7 @@ const ChessApp = ({ sendMessage, isConnected }) => {
   );
 };
 
-// Wrap ChessApp with ServerConnection
+// wrap ChessApp with ServerConnection
 const App = () => {
   return (
     <ServerConnection 

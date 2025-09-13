@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SilentCheckmate - Chess Client</title>
-    <script type="module" src="https://unpkg.com/chessboard-element?module"></script>
+    <script src="chessboard.js"></script>
+    <link rel="stylesheet" href="chessboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
@@ -402,11 +403,9 @@
                 <button id="offer-draw-btn" disabled class="draw-button">Offer Draw</button>
             </div>
             
-            <chess-board id="board"
-                style="width: 480px;"
-                draggable-pieces="true"
-                position="start">
-            </chess-board>
+            <div id="board-container" style="width: 480px; margin: 20px 0;">
+                <div id="board" style="width: 100%; height: 480px;"></div>
+            </div>
             
             <div class="game-info">
                 <div id="status" class="status">Ready to play</div>
@@ -499,10 +498,48 @@
     <script>
         // Global variables
         let socket;
-        let username = '';
-        let gameId = '';
+        let username = localStorage.getItem('username') || '';
+        let gameId = null;
+        let playerColor = null;
         let isGameActive = false;
-        let user = null;
+        let board;
+        let game;
+        
+        // Initialize chessboard function
+        function initializeChessboard() {
+            try {
+                board = Chessboard('board', {
+                    position: 'start',
+                    draggable: true,
+                    pieceTheme: 'pieces-basic-png/{piece}.png',
+                    onDrop: onDrop
+                });
+                console.log('Chessboard initialized successfully');
+                
+                // Force a resize to ensure proper rendering
+                window.setTimeout(function() {
+                    if (board && typeof board.resize === 'function') {
+                        board.resize();
+                    }
+                }, 100);
+            } catch (err) {
+                console.error('Error initializing chessboard:', err);
+            }
+        }
+        
+        function onDrop(source, target, piece) {
+            if (socket && socket.readyState === WebSocket.OPEN && gameId) {
+                socket.send(JSON.stringify({
+                    t: 'MOVE',
+                    gameId: gameId,
+                    from: source,
+                    to: target,
+                    promo: piece.charAt(1) === 'P' ? 'q' : undefined
+                }));
+            }
+            return 'snapback'; // Always snapback, let server validate
+        }
+        
         const apiUrl = window.location.hostname === 'localhost' 
             ? 'http://localhost:3001/api' 
             : 'https://silentcheckmate.onrender.com/api';
@@ -524,6 +561,12 @@
             socket.onopen = () => {
                 console.log("WebSocket connected");
                 updateStatus("Connected to server");
+                
+                // Send login message with username
+                if (username) {
+                    socket.send(JSON.stringify({ type: "LOGIN", username: username }));
+                    console.log("Sent login with username:", username);
+                }
                 
                 // If already logged in, join game
                 if (username && gameId) {
@@ -943,6 +986,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM fully loaded');
             
+            // Initialize the chessboard
+            initializeChessboard();
+            
             // Check authentication
             if (!checkAuth()) return;
             
@@ -1002,14 +1048,14 @@
             document.getElementById('accept-draw-btn').addEventListener('click', () => {
                 document.getElementById('draw-popup').style.display = 'none';
                 if (socket && socket.readyState === WebSocket.OPEN && gameId) {
-                    socket.send(JSON.stringify({ type: 'ACCEPT_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ t: 'ACCEPT_DRAW', payload: { gameId } }));
                 }
             });
             
             document.getElementById('decline-draw-btn').addEventListener('click', () => {
                 document.getElementById('draw-popup').style.display = 'none';
                 if (socket && socket.readyState === WebSocket.OPEN && gameId) {
-                    socket.send(JSON.stringify({ type: 'DECLINE_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ t: 'DECLINE_DRAW', payload: { gameId } }));
                 }
             });
             
@@ -1021,7 +1067,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'OFFER_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ t: 'OFFER_DRAW', payload: { gameId } }));
                     updateStatus('Draw offered to opponent');
                 } else {
                     updateStatus('Not connected to server');
@@ -1118,7 +1164,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'CREATE_GAME', payload: {} }));
+                    socket.send(JSON.stringify({ t: 'CREATE_GAME', payload: {} }));
                 } else {
                     updateStatus('Not connected to server');
                 }
@@ -1138,7 +1184,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'JOIN_GAME', payload: { gameId: joinGameId } }));
+                    socket.send(JSON.stringify({ t: 'JOIN_GAME', payload: { gameId: joinGameId } }));
                     gameId = joinGameId;
                 } else {
                     updateStatus('Not connected to server');
@@ -1158,7 +1204,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'RESIGN', payload: { gameId } }));
+                    socket.send(JSON.stringify({ t: 'RESIGN', payload: { gameId } }));
                 } else {
                     updateStatus('Not connected to server');
                 }

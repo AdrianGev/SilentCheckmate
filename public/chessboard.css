@@ -211,15 +211,15 @@
 }
 
 /* Piece images */
-.piece[data-piece="wp"] { background-image: url('../pieces-basic-png/white-pawn.png'); }
-.piece[data-piece="wn"] { background-image: url('../pieces-basic-png/white-knight.png'); }
-.piece[data-piece="wb"] { background-image: url('../pieces-basic-png/white-bishop.png'); }
-.piece[data-piece="wr"] { background-image: url('../pieces-basic-png/white-rook.png'); }
-.piece[data-piece="wq"] { background-image: url('../pieces-basic-png/white-queen.png'); }
-.piece[data-piece="wk"] { background-image: url('../pieces-basic-png/white-king.png'); }
-.piece[data-piece="bp"] { background-image: url('../pieces-basic-png/black-pawn.png'); }
-.piece[data-piece="bn"] { background-image: url('../pieces-basic-png/black-knight.png'); }
-.piece[data-piece="bb"] { background-image: url('../pieces-basic-png/black-bishop.png'); }
-.piece[data-piece="br"] { background-image: url('../pieces-basic-png/black-rook.png'); }
-.piece[data-piece="bq"] { background-image: url('../pieces-basic-png/black-queen.png'); }
-.piece[data-piece="bk"] { background-image: url('../pieces-basic-png/black-king.png'); }
+.piece[data-piece="wp"] { background-image: url('pieces-basic-png/white-pawn.png'); }
+.piece[data-piece="wn"] { background-image: url('pieces-basic-png/white-knight.png'); }
+.piece[data-piece="wb"] { background-image: url('pieces-basic-png/white-bishop.png'); }
+.piece[data-piece="wr"] { background-image: url('pieces-basic-png/white-rook.png'); }
+.piece[data-piece="wq"] { background-image: url('pieces-basic-png/white-queen.png'); }
+.piece[data-piece="wk"] { background-image: url('pieces-basic-png/white-king.png'); }
+.piece[data-piece="bp"] { background-image: url('pieces-basic-png/black-pawn.png'); }
+.piece[data-piece="bn"] { background-image: url('pieces-basic-png/black-knight.png'); }
+.piece[data-piece="bb"] { background-image: url('pieces-basic-png/black-bishop.png'); }
+.piece[data-piece="br"] { background-image: url('pieces-basic-png/black-rook.png'); }
+.piece[data-piece="bq"] { background-image: url('pieces-basic-png/black-queen.png'); }
+.piece[data-piece="bk"] { background-image: url('pieces-basic-png/black-king.png'); }

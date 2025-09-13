@@ -1,10 +1,10 @@
-// Import required modules
+// import required modules
 const { ipcRenderer } = require('electron');
 
-// Log that renderer is starting
+// log that renderer is starting
 console.log('Renderer process starting...');
 
-// Global variables
+// global variables
 let game = null;
 let board = null;
 let username = '';
@@ -15,10 +15,10 @@ let moveHistory = [];
 let opponent = '';
 let socket = null;
 
-// Initialize socket connection
+// initialize socket connection
 function initializeSocket() {
   try {
-    // Use the global io object from the CDN
+    // use the global io object from the CDN
     socket = io('http://localhost:3001');
     console.log('Socket initialized');
     setupSocketEvents();
@@ -28,10 +28,10 @@ function initializeSocket() {
   }
 }
 
-// Initialize chess game
+// initialize chess game
 function initializeChessGame() {
   try {
-    // Use the global Chess object from the CDN
+    // use the global Chess object from the CDN
     game = new Chess();
     console.log('Chess game initialized');
   } catch (error) {
@@ -40,7 +40,7 @@ function initializeChessGame() {
   }
 }
 
-// Socket event handlers
+// socket event handlers
 function setupSocketEvents() {
   if (!socket) {
     console.error('Cannot setup socket events: socket is null');
@@ -63,13 +63,13 @@ function setupSocketEvents() {
     playerColor = 'white';
     isGameActive = true;
     
-    // Update UI
+    // update UI
     document.getElementById('game-id').textContent = gameId;
     document.getElementById('game-id-info').style.display = 'block';
     document.getElementById('player-color').textContent = playerColor;
     updateStatus('Game created! Share the Game ID with your opponent.');
     
-    // Enable/disable buttons
+    // enable/disable buttons
     document.getElementById('create-game-btn').disabled = true;
     document.getElementById('join-game-btn').disabled = true;
     document.getElementById('join-game-id').disabled = true;
@@ -94,7 +94,7 @@ function setupSocketEvents() {
     opponent = data.opponent;
     isGameActive = true;
     
-    // Update UI
+    // update UI
     document.getElementById('game-id').textContent = gameId;
     document.getElementById('game-id-info').style.display = 'block';
     document.getElementById('player-color').textContent = playerColor;
@@ -103,13 +103,13 @@ function setupSocketEvents() {
     
     updateStatus(`Game joined! You are playing as ${playerColor}.`);
     
-    // Enable/disable buttons
+    // enable/disable buttons
     document.getElementById('create-game-btn').disabled = true;
     document.getElementById('join-game-btn').disabled = true;
     document.getElementById('join-game-id').disabled = true;
     document.getElementById('resign-btn').disabled = false;
     
-    // Set board orientation
+    // set board orientation
     if (board) board.orientation(playerColor);
   });
 
@@ -117,7 +117,7 @@ function setupSocketEvents() {
     console.log('Opponent joined event received:', data);
     opponent = data.opponent;
     
-    // Update UI
+    // update UI
     document.getElementById('opponent-name').textContent = opponent;
     document.getElementById('opponent-info').style.display = 'block';
     
@@ -126,23 +126,23 @@ function setupSocketEvents() {
 
   socket.on('moveMade', (data) => {
     console.log('Move made event received:', data);
-    // Update the game state
+    // update the game state
     if (game) {
       game.move(data.move);
       if (board) board.position(game.fen());
       
-      // Add to move history
+      // add to move history
       moveHistory.push(data.move);
       updateMoveList();
       
-      // Update status
+      // update status
       if (data.username !== username) {
         updateStatus(`${opponent} moved ${data.move}. Your turn.`);
       } else {
         updateStatus(`You moved ${data.move}. Waiting for opponent.`);
       }
       
-      // Check for game over
+      // check for game over
       if (game.isGameOver()) {
         handleGameOver();
       }
@@ -154,7 +154,7 @@ function setupSocketEvents() {
     isGameActive = false;
     updateStatus(data.message);
     
-    // Enable/disable buttons
+    // enable/disable buttons
     document.getElementById('create-game-btn').disabled = false;
     document.getElementById('join-game-btn').disabled = false;
     document.getElementById('join-game-id').disabled = false;
@@ -172,22 +172,22 @@ function setupSocketEvents() {
   });
 }
 
-// DOM Elements
+// DOM elements
 window.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded');
   
-  // Initialize chess game and socket
+  // initialize chess game and socket
   initializeChessGame();
   initializeSocket();
   
-  // Login form
+  // login form
   const loginForm = document.getElementById('login-form');
   const usernameInput = document.getElementById('username');
   const loginError = document.getElementById('login-error');
   const loginScreen = document.getElementById('login-screen');
   const gameScreen = document.getElementById('game-screen');
   
-  // Login form handler
+  // login form handler
   if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -202,16 +202,16 @@ window.addEventListener('DOMContentLoaded', () => {
       username = usernameValue;
       document.getElementById('player-username').textContent = username;
       
-      // Hide login screen, show game screen
+      // hide login screen, show game screen
       loginScreen.style.display = 'none';
       gameScreen.style.display = 'block';
       
-      // Initialize the board
+      // initialize the board
       initializeBoard();
       
-      // Connect to socket server
+      // connect to socket server
       if (socket) {
-        // No need to emit login event as we'll use username when creating/joining games
+        // no need to emit login event so just use username when creating/joining games probably
         console.log('Login successful with username:', username);
       } else {
         console.error('Socket not initialized');
@@ -225,14 +225,14 @@ window.addEventListener('DOMContentLoaded', () => {
     console.error('Login form not found');
   }
   
-  // Game control buttons
+  // game control buttons
   const createGameBtn = document.getElementById('create-game-btn');
   const joinGameIdInput = document.getElementById('join-game-id');
   const joinGameBtn = document.getElementById('join-game-btn');
   const resetBtn = document.getElementById('reset-btn');
   const resignBtn = document.getElementById('resign-btn');
   
-  // Create game button
+  // create game button
   if (createGameBtn) {
     createGameBtn.addEventListener('click', () => {
       if (!username) {
@@ -249,7 +249,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Join game button
+  // join game button
   if (joinGameBtn) {
     joinGameBtn.addEventListener('click', () => {
       const gameIdValue = joinGameIdInput.value.trim();
@@ -273,7 +273,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Reset button
+  // reset button
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       if (game) {
@@ -288,7 +288,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Resign button
+  // resign button
   if (resignBtn) {
     resignBtn.addEventListener('click', () => {
       if (isGameActive && gameId && socket) {
@@ -298,11 +298,11 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Notify the main process that the app is ready
+  // notify the main process that the app is ready
   ipcRenderer.send('app-ready');
 });
 
-// Initialize the chessboard
+// initialize the chessboard
 function initializeBoard() {
   try {
     console.log('Initializing chessboard...');
@@ -329,12 +329,12 @@ function initializeBoard() {
   }
 }
 
-// Chess piece drag start handler
+// chess piece drag start handler
 function onDragStart(source, piece, position, orientation) {
-  // Do not allow piece movement if the game is over
+  // do not allow piece movement if the game is over
   if (game && game.isGameOver()) return false;
   
-  // Only allow the current player to move their pieces
+  // only allow the current player to move their pieces
   if (!isGameActive) return false;
   
   // Only allow the player to move their own pieces
@@ -350,9 +350,9 @@ function onDragStart(source, piece, position, orientation) {
   }
 }
 
-// Chess piece drop handler
+// chess piece drop handler
 function onDrop(source, target) {
-  // Check if the move is legal
+  // check if the move is legal
   if (!game) return 'snapback';
   
   const move = game.move({
@@ -361,10 +361,10 @@ function onDrop(source, target) {
     promotion: 'q' // Always promote to queen for simplicity
   });
   
-  // If illegal move, snap back
+  // if illegal move, snap back
   if (move === null) return 'snapback';
   
-  // Send the move to the server
+  // send the move to the server
   if (isGameActive && gameId && socket) {
     socket.emit('makeMove', {
       gameId,
@@ -374,20 +374,20 @@ function onDrop(source, target) {
     });
   }
   
-  // Check for game over
+  // check for game over
   if (game.isGameOver()) {
     handleGameOver();
   }
 }
 
-// After a piece snap animation completes
+// after a piece snap animation completes
 function onSnapEnd() {
   if (board && game) {
     board.position(game.fen());
   }
 }
 
-// Handle game over conditions
+// handle game over conditions
 function handleGameOver() {
   if (!game) return;
   
@@ -405,14 +405,14 @@ function handleGameOver() {
     updateStatus('Game over. Draw by insufficient material.');
   }
   
-  // Enable/disable buttons
+  // enable/disable buttons
   document.getElementById('create-game-btn').disabled = false;
   document.getElementById('join-game-btn').disabled = false;
   document.getElementById('join-game-id').disabled = false;
   document.getElementById('resign-btn').disabled = true;
 }
 
-// Update the game status message
+// update the game status message
 function updateStatus(message) {
   const statusEl = document.getElementById('game-status');
   if (statusEl) {
@@ -421,7 +421,7 @@ function updateStatus(message) {
   console.log('Status:', message);
 }
 
-// Update the move history list
+// update the move history list
 function updateMoveList() {
   const moveListEl = document.getElementById('move-list');
   

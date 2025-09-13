@@ -85,9 +85,11 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-      console.log('Received:', data.type);
+      // Handle both message formats (type and t)
+      const messageType = data.type || data.t;
+      console.log('Received:', messageType);
 
-      switch (data.type) {
+      switch (messageType) {
         case 'LOGIN':
           handleLogin(ws, data);
           break;
@@ -112,8 +114,33 @@ wss.on('connection', (ws) => {
         case 'DECLINE_DRAW':
           handleDeclineDraw(ws, data);
           break;
+        case 'JOIN':
+          // Handle JOIN message for existing game
+          if (data.gameId) {
+            gameId = data.gameId;
+            console.log(`Player ${playerId} joining game room ${gameId}`);
+          }
+          break;
+        case 'PING':
+          // Handle ping message (keep-alive)
+          ws.send(JSON.stringify({ t: 'PONG' }));
+          break;
+        case 'MOVE':
+          // Handle move in new format
+          if (data.gameId && data.from && data.to) {
+            handleMakeMove(ws, {
+              type: 'MAKE_MOVE',
+              payload: {
+                gameId: data.gameId,
+                from: data.from,
+                to: data.to,
+                promotion: data.promo
+              }
+            });
+          }
+          break;
         default:
-          console.log('Unknown message type:', data.type);
+          console.log('Unknown message type:', messageType);
       }
     } catch (error) {
       console.error('Error processing message:', error);

@@ -1,44 +1,116 @@
-const React = require('react');
-const { useState } = React;
+import React, { useState } from 'react';
+import '../styles/GameControls.css';
 
-const GameControls = ({ createGame, joinGame, resetGame, resignGame, isGameActive }) => {
+const GameControls = ({ 
+  createGame, 
+  joinGame, 
+  resetGame, 
+  resignGame, 
+  offerDraw,
+  isGameActive,
+  gameId,
+  playerColor
+ }) => {
   const [gameIdInput, setGameIdInput] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const handleJoinGame = () => {
     if (gameIdInput.trim()) {
-      joinGame(gameIdInput);
+      joinGame(gameIdInput.trim());
       setGameIdInput('');
     }
   };
 
+  const handleCopyGameId = () => {
+    if (gameId) {
+      navigator.clipboard.writeText(gameId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleJoinGame();
+    }
+  };
+
   return (
-    <div className="controls">
-      <button onClick={createGame} disabled={isGameActive}>
-        Create New Game
-      </button>
-      
-      <div className="join-game">
-        <input
-          type="text"
-          value={gameIdInput}
-          onChange={(e) => setGameIdInput(e.target.value)}
-          placeholder="Enter Game ID"
+    <div className="game-controls">
+      <div className="control-section">
+        <button 
+          className="control-button create-button" 
+          onClick={createGame} 
           disabled={isGameActive}
-        />
-        <button onClick={handleJoinGame} disabled={isGameActive}>
-          Join Game
+        >
+          <i className="fas fa-plus"></i> Create New Game
+        </button>
+        
+        <div className="join-game">
+          <input
+            type="text"
+            value={gameIdInput}
+            onChange={(e) => setGameIdInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter Game ID"
+            disabled={isGameActive}
+            className="game-id-input"
+          />
+          <button 
+            className="control-button join-button" 
+            onClick={handleJoinGame} 
+            disabled={isGameActive || !gameIdInput.trim()}
+          >
+            <i className="fas fa-sign-in-alt"></i> Join
+          </button>
+        </div>
+      </div>
+      
+      {gameId && (
+        <div className="game-id-display">
+          <span>Game ID: <strong>{gameId}</strong></span>
+          <button 
+            className="copy-button" 
+            onClick={handleCopyGameId} 
+            title="Copy Game ID"
+          >
+            {copied ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+          </button>
+        </div>
+      )}
+      
+      <div className="control-section">
+        <button 
+          className="control-button reset-button" 
+          onClick={resetGame}
+        >
+          <i className="fas fa-redo"></i> Reset
+        </button>
+        
+        <button 
+          className="control-button resign-button" 
+          onClick={resignGame} 
+          disabled={!isGameActive}
+        >
+          <i className="fas fa-flag"></i> Resign
+        </button>
+        
+        <button 
+          className="control-button draw-button" 
+          onClick={offerDraw} 
+          disabled={!isGameActive}
+        >
+          <i className="fas fa-handshake"></i> Offer Draw
         </button>
       </div>
       
-      <button onClick={resetGame}>
-        Reset Board
-      </button>
-      
-      <button onClick={resignGame} disabled={!isGameActive}>
-        Resign
-      </button>
+      {isGameActive && playerColor && (
+        <div className="player-info">
+          Playing as: <span className={`color-indicator ${playerColor}`}>{playerColor}</span>
+        </div>
+      )}
     </div>
   );
 };
 
-module.exports = GameControls;
+export default GameControls;

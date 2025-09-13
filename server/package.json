@@ -1,7 +1,9 @@
 {
   "name": "silentcheckmate-server",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node index.js"
   },
