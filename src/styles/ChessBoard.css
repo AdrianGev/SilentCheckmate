@@ -35,8 +35,26 @@
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  cursor: pointer;
+  cursor: grab;
   z-index: 2;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.piece:active {
+  cursor: grabbing;
+}
+
+.piece.dragged {
+  width: 60px;
+  height: 60px;
+  cursor: grabbing;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+}
+
+.square.dragging .piece {
+  opacity: 0.3;
 }
 
 /* Highlight styles */
