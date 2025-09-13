@@ -67,15 +67,31 @@ const GameControls = ({
       </div>
       
       {gameId && (
-        <div className="game-id-display">
-          <span>Game ID: <strong>{gameId}</strong></span>
-          <button 
-            className="copy-button" 
-            onClick={handleCopyGameId} 
-            title="Copy Game ID"
-          >
-            {copied ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
-          </button>
+        <div className="game-id-container">
+          <div className="game-id-header">
+            <i className="fas fa-key"></i> Game ID (Share with opponent)
+          </div>
+          <div className="game-id-display">
+            <div className="game-id-value">{gameId}</div>
+            <button 
+              className="copy-button" 
+              onClick={handleCopyGameId} 
+              title="Copy Game ID"
+            >
+              {copied ? (
+                <span className="copied-text">
+                  <i className="fas fa-check"></i> Copied!
+                </span>
+              ) : (
+                <span>
+                  <i className="fas fa-copy"></i> Copy
+                </span>
+              )}
+            </button>
+          </div>
+          <div className="game-id-instructions">
+            Share this ID with your opponent so they can join your game
+          </div>
         </div>
       )}
       
