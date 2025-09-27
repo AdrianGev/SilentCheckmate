@@ -271,7 +271,7 @@
             </div>
             
             <!-- Chess Clocks -->
-            <div id="chess-clocks" class="chess-clocks" style="display: none;">
+            <div id="chess-clocks" class="chess-clocks">
                 <div id="opponent-clock" class="clock">
                     <div id="opponent-name" class="clock-player">Opponent</div>
                     <div id="opponent-time" class="clock-time">10:00</div>
@@ -389,18 +389,19 @@
                 console.log("Received message:", msg);
                 
                 if (msg.t === "STATE") {
-                    console.log("STATE", msg.fen, "last:", msg.last);
+                    console.log("STATE", msg.fen, "last:", msg.last, "activePlayer:", msg.activePlayer);
                     const board = document.getElementById("board");
                     board.setAttribute("position", msg.fen); // update from server
                     
                     if (msg.last) {
                         addMoveToHistory(msg.last);
                         updateStatus(`Last move: ${msg.last}`);
-                        
-                        // Handle clock updates if this is a timed game
-                        if (isTimedGame && msg.activePlayer) {
-                            updateClockAfterMove(msg.activePlayer, msg.whiteTime, msg.blackTime);
-                        }
+                    }
+                    
+                    // Handle clock updates if this is a timed game
+                    if (isTimedGame && msg.activePlayer) {
+                        console.log("Updating clock for active player:", msg.activePlayer);
+                        updateClockAfterMove(msg.activePlayer, msg.whiteTime, msg.blackTime);
                     }
                 }
                 
@@ -457,9 +458,10 @@
                         
                         // Initialize clocks
                         initializeClocks(timeMinutes);
-                        document.getElementById('chess-clocks').style.display = 'flex';
                     } else {
                         updateStatus(`Game created. Share ID ${gameId} with your opponent.`);
+                        // Hide clocks for non-timed games
+                        document.getElementById('chess-clocks').style.display = 'none';
                     }
                     
                     // Join the game room
@@ -490,9 +492,10 @@
                         
                         // Initialize clocks
                         initializeClocks(timeMinutes);
-                        document.getElementById('chess-clocks').style.display = 'flex';
                     } else {
                         updateStatus(`Joined game ${gameId}. Playing as ${payload.color}.`);
+                        // Hide clocks for non-timed games
+                        document.getElementById('chess-clocks').style.display = 'none';
                     }
                     
                     // Join the game room
@@ -515,6 +518,7 @@
                         document.getElementById('player-name').textContent = username + ' (Black)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
                     } else {
+                        board.setAttribute('orientation', 'white');
                         document.getElementById('player-name').textContent = username + ' (White)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
                     }
@@ -537,7 +541,14 @@
                     
                     // Start the clock if this is a timed game
                     if (isTimedGame) {
+                        console.log('Starting clock for white player');
                         startClock('white'); // White always moves first
+                        
+                        // Make sure clocks are visible
+                        document.getElementById('chess-clocks').style.display = 'flex';
+                    } else {
+                        // Hide clocks for non-timed games
+                        document.getElementById('chess-clocks').style.display = 'none';
                     }
                     break;
                     
@@ -920,6 +931,7 @@
                     return;
                 }
                 
+                console.log('Sending move:', source, 'to', target);
                 socket.send(JSON.stringify({ 
                     t: "MOVE", 
                     gameId, 
@@ -927,6 +939,15 @@
                     to: target, 
                     promo: "q" 
                 }));
+            });
+            
+            // Also handle piece drag start to prevent illegal moves
+            board.addEventListener('dragstart', (e) => {
+                if (!isGameActive) {
+                    e.preventDefault();
+                    updateStatus('Game is not active');
+                    return false;
+                }
             });
             
             // Chess clock functions
@@ -943,6 +964,9 @@
                 
                 document.getElementById('player-time').textContent = formatTime(playerClock);
                 document.getElementById('opponent-time').textContent = formatTime(opponentClock);
+                
+                // Make sure clocks are visible
+                document.getElementById('chess-clocks').style.display = 'flex';
             }
             
             function startClock(color) {
@@ -1007,8 +1031,11 @@
             }
             
             function updateClockAfterMove(newActivePlayer, whiteTime, blackTime) {
+                console.log('Updating clock after move:', newActivePlayer, whiteTime, blackTime);
+                
                 // If server sent time values, use them
                 if (whiteTime !== undefined && blackTime !== undefined) {
+                    console.log('Using server time values:', whiteTime, blackTime);
                     if (playerColor === 'white') {
                         playerClock = whiteTime;
                         opponentClock = blackTime;
@@ -1022,6 +1049,7 @@
                 } else {
                     // Add increment to the player who just moved
                     const previousPlayer = newActivePlayer === 'white' ? 'black' : 'white';
+                    console.log('Adding increment to previous player:', previousPlayer);
                     
                     if (playerColor === previousPlayer) {
                         playerClock += timeIncrement;
@@ -1031,6 +1059,9 @@
                         document.getElementById('opponent-time').textContent = formatTime(opponentClock);
                     }
                 }
+                
+                // Make sure clocks are visible
+                document.getElementById('chess-clocks').style.display = 'flex';
                 
                 // Start the clock for the new active player
                 startClock(newActivePlayer);

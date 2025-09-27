@@ -135,40 +135,45 @@ wss.on("connection", (socket) => {
       
       if (msg.t === "MOVE" && socket._room && msg.gameId === socket._room) {
         const r = getRoom(socket._room);
-        const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
-        if (!mv) {
-          socket.send(JSON.stringify({ t: "ILLEGAL" }));
-          return;
-        }
-        
-        // Update active player after move
-        r.activePlayer = r.activePlayer === 'white' ? 'black' : 'white';
-        
-        // Handle time control if enabled
-        let payload;
-        if (r.timeControl) {
-          // Add increment to the player who just moved (previous active player)
-          const previousPlayer = r.activePlayer === 'white' ? 'black' : 'white';
-          if (previousPlayer === 'white') {
-            r.whiteTime += r.timeControl.increment;
-          } else {
-            r.blackTime += r.timeControl.increment;
+        try {
+          const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
+          if (!mv) {
+            socket.send(JSON.stringify({ t: "ILLEGAL" }));
+            return;
           }
           
-          payload = JSON.stringify({ 
-            t: "STATE", 
-            fen: r.chess.fen(), 
-            last: mv.san,
-            activePlayer: r.activePlayer,
-            whiteTime: r.whiteTime,
-            blackTime: r.blackTime
-          });
-        } else {
-          payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+          // Update active player after move
+          r.activePlayer = r.activePlayer === 'white' ? 'black' : 'white';
+          
+          // Handle time control if enabled
+          let payload;
+          if (r.timeControl) {
+            // Add increment to the player who just moved (previous active player)
+            const previousPlayer = r.activePlayer === 'white' ? 'black' : 'white';
+            if (previousPlayer === 'white') {
+              r.whiteTime += r.timeControl.increment;
+            } else {
+              r.blackTime += r.timeControl.increment;
+            }
+            
+            payload = JSON.stringify({ 
+              t: "STATE", 
+              fen: r.chess.fen(), 
+              last: mv.san,
+              activePlayer: r.activePlayer,
+              whiteTime: r.whiteTime,
+              blackTime: r.blackTime
+            });
+          } else {
+            payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+          }
+          
+          console.log("MOVE", socket._room, mv.san);
+          for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
+        } catch (error) {
+          console.error("Error processing move:", error);
+          socket.send(JSON.stringify({ t: "ILLEGAL" }));
         }
-        
-        console.log("MOVE", socket._room, mv.san);
-        for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
         return;
       }
       
