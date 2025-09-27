@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SilentCheckmate - Chess Client</title>
-    <script src="chessboard.js"></script>
-    <link rel="stylesheet" href="chessboard.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module" src="https://unpkg.com/chessboard-element?module"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -159,208 +157,6 @@
         .draw-button:hover {
             background-color: #ec971f;
         }
-        
-        /* ELO Rating Styles */
-        .player-profile {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 480px;
-        }
-        
-        .player-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .player-avatar {
-            width: 40px;
-            height: 40px;
-            background-color: #ddd;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            color: #666;
-        }
-        
-        .player-details {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .player-name {
-            font-weight: bold;
-            font-size: 16px;
-        }
-        
-        .player-elo {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .elo-badge {
-            background-color: #4CAF50;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        
-        .logout-btn {
-            background-color: #f44336;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .logout-btn:hover {
-            background-color: #d32f2f;
-        }
-        
-        .leaderboard {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 480px;
-        }
-        
-        .leaderboard h3 {
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        
-        .leaderboard-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .leaderboard-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .leaderboard-rank {
-            font-weight: bold;
-            width: 30px;
-        }
-        
-        .leaderboard-username {
-            flex-grow: 1;
-        }
-        
-        .leaderboard-elo {
-            font-weight: bold;
-        }
-        
-        .match-history {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 480px;
-        }
-        
-        .match-history h3 {
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        
-        .match-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .match-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .match-result {
-            font-weight: bold;
-            width: 60px;
-        }
-        
-        .match-result.win {
-            color: #4CAF50;
-        }
-        
-        .match-result.loss {
-            color: #f44336;
-        }
-        
-        .match-result.draw {
-            color: #ff9800;
-        }
-        
-        .match-opponent {
-            flex-grow: 1;
-        }
-        
-        .match-elo-change {
-            font-weight: bold;
-        }
-        
-        .match-elo-change.positive {
-            color: #4CAF50;
-        }
-        
-        .match-elo-change.negative {
-            color: #f44336;
-        }
-        
-        .tabs {
-            display: flex;
-            margin-top: 20px;
-            border-bottom: 1px solid #ddd;
-            width: 480px;
-        }
-        
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #f0f0f0;
-            border: 1px solid #ddd;
-            border-bottom: none;
-            border-radius: 5px 5px 0 0;
-            margin-right: 5px;
-        }
-        
-        .tab.active {
-            background-color: #fff;
-            border-bottom: 1px solid #fff;
-            margin-bottom: -1px;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
     </style>
 </head>
 <body>
@@ -370,29 +166,22 @@
             <button id="settings-btn">Server Settings</button>
         </div>
 
-        <!-- Login Screen - Redirect to login.html -->
+        <!-- Login Screen -->
         <div id="login-screen" class="login-screen">
-            <h2>Redirecting to Login...</h2>
-            <p>Please wait while we redirect you to the login page.</p>
+            <h2>Login</h2>
+            <form id="login-form" class="login-form">
+                <div>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div id="login-error" class="login-error"></div>
+                <button type="submit">Enter</button>
+            </form>
         </div>
 
         <!-- Game Screen -->
         <div id="game-screen" class="game-screen">
-            <div class="player-profile">
-                <div class="player-info">
-                    <div class="player-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="player-details">
-                        <div id="player-name" class="player-name">Guest</div>
-                        <div id="player-elo" class="player-elo">ELO: --</div>
-                    </div>
-                </div>
-                <div>
-                    <span id="elo-badge" class="elo-badge">--</span>
-                    <button id="logout-btn" class="logout-btn">Logout</button>
-                </div>
-            </div>
+            <div id="player-info">Player: Guest</div>
             
             <div class="game-controls">
                 <button id="create-game-btn">Create Game</button>
@@ -403,9 +192,11 @@
                 <button id="offer-draw-btn" disabled class="draw-button">Offer Draw</button>
             </div>
             
-            <div id="board-container" style="width: 480px; margin: 20px 0;">
-                <div id="board" style="width: 100%; height: 480px;"></div>
-            </div>
+            <chess-board id="board"
+                style="width: 480px;"
+                draggable-pieces="true"
+                position="start">
+            </chess-board>
             
             <div class="game-info">
                 <div id="status" class="status">Ready to play</div>
@@ -413,44 +204,6 @@
                 <div>
                     <h3>Move History</h3>
                     <div id="move-list" class="move-list"></div>
-                </div>
-            </div>
-            
-            <!-- Tabs for Stats, Leaderboard, Match History -->
-            <div class="tabs">
-                <div class="tab active" data-tab="game-tab">Game</div>
-                <div class="tab" data-tab="leaderboard-tab">Leaderboard</div>
-                <div class="tab" data-tab="history-tab">Match History</div>
-            </div>
-            
-            <!-- Tab Content -->
-            <div id="game-tab" class="tab-content active">
-                <!-- Game content is already shown above -->
-            </div>
-            
-            <div id="leaderboard-tab" class="tab-content">
-                <div class="leaderboard">
-                    <h3>Top Players</h3>
-                    <ul id="leaderboard-list" class="leaderboard-list">
-                        <li class="leaderboard-item">
-                            <span class="leaderboard-rank">1.</span>
-                            <span class="leaderboard-username">Loading...</span>
-                            <span class="leaderboard-elo">--</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div id="history-tab" class="tab-content">
-                <div class="match-history">
-                    <h3>Your Match History</h3>
-                    <ul id="match-list" class="match-list">
-                        <li class="match-item">
-                            <span class="match-result">Loading...</span>
-                            <span class="match-opponent">--</span>
-                            <span class="match-elo-change">--</span>
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>
@@ -498,51 +251,9 @@
     <script>
         // Global variables
         let socket;
-        let username = localStorage.getItem('username') || '';
-        let gameId = null;
-        let playerColor = null;
+        let username = '';
+        let gameId = '';
         let isGameActive = false;
-        let board;
-        let game;
-        
-        // Initialize chessboard function
-        function initializeChessboard() {
-            try {
-                board = Chessboard('board', {
-                    position: 'start',
-                    draggable: true,
-                    pieceTheme: 'pieces-basic-png/{piece}.png',
-                    onDrop: onDrop
-                });
-                console.log('Chessboard initialized successfully');
-                
-                // Force a resize to ensure proper rendering
-                window.setTimeout(function() {
-                    if (board && typeof board.resize === 'function') {
-                        board.resize();
-                    }
-                }, 100);
-            } catch (err) {
-                console.error('Error initializing chessboard:', err);
-            }
-        }
-        
-        function onDrop(source, target, piece) {
-            if (socket && socket.readyState === WebSocket.OPEN && gameId) {
-                socket.send(JSON.stringify({
-                    t: 'MOVE',
-                    gameId: gameId,
-                    from: source,
-                    to: target,
-                    promo: piece.charAt(1) === 'P' ? 'q' : undefined
-                }));
-            }
-            return 'snapback'; // Always snapback, let server validate
-        }
-        
-        const apiUrl = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3001/api' 
-            : 'https://silentcheckmate.onrender.com/api';
         
         // Get server URL from localStorage or use default
         function getServerUrl() {
@@ -561,12 +272,6 @@
             socket.onopen = () => {
                 console.log("WebSocket connected");
                 updateStatus("Connected to server");
-                
-                // Send login message with username
-                if (username) {
-                    socket.send(JSON.stringify({ type: "LOGIN", username: username }));
-                    console.log("Sent login with username:", username);
-                }
                 
                 // If already logged in, join game
                 if (username && gameId) {
@@ -685,7 +390,56 @@
                     break;
                     
                 case 'GAME_OVER':
-                    handleGameOver(payload);
+                    console.log('Game over:', payload);
+                    isGameActive = false;
+                    
+                    let message = '';
+                    let title = 'Game Over';
+                    
+                    if (payload.reason === 'checkmate') {
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `You won by checkmate against ${payload.loser || 'opponent'}!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `${payload.winner} won by checkmate.`;
+                        }
+                    } else if (payload.reason === 'resignation') {
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `${payload.loser} resigned. You win!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `You resigned. ${payload.winner} wins.`;
+                        }
+                    } else if (payload.reason === 'draw') {
+                        title = 'Draw';
+                        message = 'Game ended in a draw.';
+                    } else if (payload.reason === 'stalemate') {
+                        title = 'Draw';
+                        message = 'Game ended in stalemate.';
+                    } else if (payload.reason === 'draw_agreement') {
+                        title = 'Draw';
+                        message = 'Game ended by mutual agreement.';
+                    } else {
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `You won against ${payload.loser || 'opponent'}!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `${payload.winner} won the game.`;
+                        }
+                    }
+                    
+                    updateStatus(message);
+                    showGameResultPopup(title, message);
+                    
+                    // Enable/disable buttons
+                    document.getElementById('create-game-btn').disabled = false;
+                    document.getElementById('join-game-btn').disabled = false;
+                    document.getElementById('join-game-id').disabled = false;
+                    document.getElementById('resign-btn').disabled = true;
+                    document.getElementById('offer-draw-btn').disabled = true;
                     break;
                     
                 case 'DRAW_OFFERED':
@@ -777,245 +531,12 @@
             popup.style.display = 'flex';
         }
         
-        // Check authentication status and redirect if needed
-        function checkAuth() {
-            const storedUser = localStorage.getItem('user');
-            
-            if (!storedUser) {
-                // No user found, redirect to login page
-                window.location.href = '/login.html';
-                return false;
-            }
-            
-            try {
-                user = JSON.parse(storedUser);
-                username = user.username;
-                
-                // Update UI with user info
-                document.getElementById('player-name').textContent = username;
-                
-                if (!user.isGuest && user.elo) {
-                    document.getElementById('player-elo').textContent = `ELO: ${user.elo}`;
-                    document.getElementById('elo-badge').textContent = user.elo;
-                    
-                    // Fetch latest user data
-                    fetchUserData();
-                    
-                    // Fetch leaderboard
-                    fetchLeaderboard();
-                    
-                    // Fetch match history
-                    fetchMatchHistory();
-                } else {
-                    document.getElementById('player-elo').textContent = 'Guest Player';
-                    document.getElementById('elo-badge').textContent = 'Guest';
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Error parsing user data:', error);
-                localStorage.removeItem('user');
-                window.location.href = '/login.html';
-                return false;
-            }
-        }
-        
-        // Fetch current user data
-        async function fetchUserData() {
-            if (user.isGuest) return;
-            
-            try {
-                const response = await fetch(`${apiUrl}/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const userData = await response.json();
-                    
-                    // Update user data
-                    user.elo = userData.elo;
-                    localStorage.setItem('user', JSON.stringify(user));
-                    
-                    // Update UI
-                    document.getElementById('player-elo').textContent = `ELO: ${user.elo}`;
-                    document.getElementById('elo-badge').textContent = user.elo;
-                } else {
-                    // Handle authentication error
-                    if (response.status === 401) {
-                        // Try to refresh token
-                        const refreshResponse = await fetch(`${apiUrl}/auth/refresh`, {
-                            method: 'POST',
-                            credentials: 'include'
-                        });
-                        
-                        if (refreshResponse.ok) {
-                            // Token refreshed, try again
-                            fetchUserData();
-                        } else {
-                            // Refresh failed, redirect to login
-                            localStorage.removeItem('user');
-                            window.location.href = '/login.html';
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-            }
-        }
-        
-        // Fetch leaderboard
-        async function fetchLeaderboard() {
-            try {
-                const response = await fetch(`${apiUrl}/leaderboard?limit=10`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const leaderboardData = await response.json();
-                    const leaderboardList = document.getElementById('leaderboard-list');
-                    
-                    // Clear existing items
-                    leaderboardList.innerHTML = '';
-                    
-                    // Add new items
-                    leaderboardData.forEach((player, index) => {
-                        const item = document.createElement('li');
-                        item.className = 'leaderboard-item';
-                        
-                        const rank = document.createElement('span');
-                        rank.className = 'leaderboard-rank';
-                        rank.textContent = `${index + 1}.`;
-                        
-                        const username = document.createElement('span');
-                        username.className = 'leaderboard-username';
-                        username.textContent = player.username;
-                        
-                        const elo = document.createElement('span');
-                        elo.className = 'leaderboard-elo';
-                        elo.textContent = player.elo;
-                        
-                        item.appendChild(rank);
-                        item.appendChild(username);
-                        item.appendChild(elo);
-                        
-                        leaderboardList.appendChild(item);
-                    });
-                }
-            } catch (error) {
-                console.error('Error fetching leaderboard:', error);
-            }
-        }
-        
-        // Fetch match history
-        async function fetchMatchHistory() {
-            if (user.isGuest) return;
-            
-            try {
-                const response = await fetch(`${apiUrl}/matches/history?limit=10`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const matchHistory = await response.json();
-                    const matchList = document.getElementById('match-list');
-                    
-                    // Clear existing items
-                    matchList.innerHTML = '';
-                    
-                    if (matchHistory.length === 0) {
-                        const item = document.createElement('li');
-                        item.className = 'match-item';
-                        item.textContent = 'No matches played yet';
-                        matchList.appendChild(item);
-                        return;
-                    }
-                    
-                    // Add new items
-                    matchHistory.forEach(match => {
-                        const item = document.createElement('li');
-                        item.className = 'match-item';
-                        
-                        const result = document.createElement('span');
-                        result.className = `match-result ${match.result}`;
-                        result.textContent = match.result.toUpperCase();
-                        
-                        const opponent = document.createElement('span');
-                        opponent.className = 'match-opponent';
-                        opponent.textContent = `vs ${match.opponent}`;
-                        
-                        const eloChange = document.createElement('span');
-                        eloChange.className = `match-elo-change ${match.eloChange > 0 ? 'positive' : match.eloChange < 0 ? 'negative' : ''}`;
-                        eloChange.textContent = match.eloChange > 0 ? `+${match.eloChange}` : match.eloChange;
-                        
-                        item.appendChild(result);
-                        item.appendChild(opponent);
-                        item.appendChild(eloChange);
-                        
-                        matchList.appendChild(item);
-                    });
-                }
-            } catch (error) {
-                console.error('Error fetching match history:', error);
-            }
-        }
-        
-        // Logout function
-        function logout() {
-            fetch(`${apiUrl}/auth/logout`, {
-                method: 'POST',
-                credentials: 'include'
-            }).finally(() => {
-                localStorage.removeItem('user');
-                window.location.href = '/login.html';
-            });
-        }
-        
         // DOM ready handler
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM fully loaded');
             
-            // Initialize the chessboard
-            initializeChessboard();
-            
-            // Check authentication
-            if (!checkAuth()) return;
-            
-            // Show game screen
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            
             // Initialize WebSocket connection
             connect();
-            
-            // Tab switching
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    // Remove active class from all tabs and content
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    // Add active class to clicked tab and corresponding content
-                    tab.classList.add('active');
-                    const tabContent = document.getElementById(tab.dataset.tab);
-                    tabContent.classList.add('active');
-                });
-            });
-            
-            // Logout button
-            document.getElementById('logout-btn').addEventListener('click', logout);
             
             // Server settings
             const settingsBtn = document.getElementById('settings-btn');
@@ -1048,14 +569,14 @@
             document.getElementById('accept-draw-btn').addEventListener('click', () => {
                 document.getElementById('draw-popup').style.display = 'none';
                 if (socket && socket.readyState === WebSocket.OPEN && gameId) {
-                    socket.send(JSON.stringify({ t: 'ACCEPT_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ type: 'ACCEPT_DRAW', payload: { gameId } }));
                 }
             });
             
             document.getElementById('decline-draw-btn').addEventListener('click', () => {
                 document.getElementById('draw-popup').style.display = 'none';
                 if (socket && socket.readyState === WebSocket.OPEN && gameId) {
-                    socket.send(JSON.stringify({ t: 'DECLINE_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ type: 'DECLINE_DRAW', payload: { gameId } }));
                 }
             });
             
@@ -1067,88 +588,43 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ t: 'OFFER_DRAW', payload: { gameId } }));
+                    socket.send(JSON.stringify({ type: 'OFFER_DRAW', payload: { gameId } }));
                     updateStatus('Draw offered to opponent');
                 } else {
                     updateStatus('Not connected to server');
                 }
             });
             
-            // Game over handler with ELO update
-            function handleGameOver(payload) {
-                console.log('Game over:', payload);
-                isGameActive = false;
+            // Login form
+            const loginForm = document.getElementById('login-form');
+            const usernameInput = document.getElementById('username');
+            const loginError = document.getElementById('login-error');
+            const loginScreen = document.getElementById('login-screen');
+            const gameScreen = document.getElementById('game-screen');
+            
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
                 
-                let message = '';
-                let title = 'Game Over';
+                const usernameValue = usernameInput.value.trim();
                 
-                if (payload.reason === 'checkmate') {
-                    if (payload.winner === username) {
-                        title = 'You Won!';
-                        message = `You won by checkmate against ${payload.loser || 'opponent'}!`;
-                    } else {
-                        title = 'You Lost';
-                        message = `${payload.winner} won by checkmate.`;
-                    }
-                } else if (payload.reason === 'resignation') {
-                    if (payload.winner === username) {
-                        title = 'You Won!';
-                        message = `${payload.loser} resigned. You win!`;
-                    } else {
-                        title = 'You Lost';
-                        message = `You resigned. ${payload.winner} wins.`;
-                    }
-                } else if (payload.reason === 'draw') {
-                    title = 'Draw';
-                    message = 'Game ended in a draw.';
-                } else if (payload.reason === 'stalemate') {
-                    title = 'Draw';
-                    message = 'Game ended in stalemate.';
-                } else if (payload.reason === 'draw_agreement') {
-                    title = 'Draw';
-                    message = 'Game ended by mutual agreement.';
-                } else {
-                    if (payload.winner === username) {
-                        title = 'You Won!';
-                        message = `You won against ${payload.loser || 'opponent'}!`;
-                    } else {
-                        title = 'You Lost';
-                        message = `${payload.winner} won the game.`;
-                    }
+                if (!usernameValue) {
+                    loginError.textContent = 'Please enter a username';
+                    loginError.style.display = 'block';
+                    return;
                 }
                 
-                // If ELO change is included in the payload
-                if (payload.eloChange !== undefined && !user.isGuest) {
-                    const eloChange = payload.eloChange;
-                    const newElo = payload.newElo || (user.elo + eloChange);
-                    
-                    // Update user ELO
-                    user.elo = newElo;
-                    localStorage.setItem('user', JSON.stringify(user));
-                    
-                    // Update UI
-                    document.getElementById('player-elo').textContent = `ELO: ${user.elo}`;
-                    document.getElementById('elo-badge').textContent = user.elo;
-                    
-                    // Add ELO change to message
-                    const eloChangeText = eloChange > 0 ? `+${eloChange}` : eloChange;
-                    message += `\nELO change: ${eloChangeText}`;
-                    
-                    // Refresh leaderboard and match history
-                    fetchLeaderboard();
-                    fetchMatchHistory();
+                username = usernameValue;
+                document.getElementById('player-info').textContent = `Player: ${username}`;
+                
+                // Hide login screen, show game screen
+                loginScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                
+                // Send login message if connected
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'LOGIN', payload: { username } }));
                 }
-                
-                updateStatus(message);
-                showGameResultPopup(title, message);
-                
-                // Enable/disable buttons
-                document.getElementById('create-game-btn').disabled = false;
-                document.getElementById('join-game-btn').disabled = false;
-                document.getElementById('join-game-id').disabled = false;
-                document.getElementById('resign-btn').disabled = true;
-                document.getElementById('offer-draw-btn').disabled = true;
-            }
+            });
             
             // Game control buttons
             const createGameBtn = document.getElementById('create-game-btn');
@@ -1164,7 +640,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ t: 'CREATE_GAME', payload: {} }));
+                    socket.send(JSON.stringify({ type: 'CREATE_GAME', payload: {} }));
                 } else {
                     updateStatus('Not connected to server');
                 }
@@ -1184,7 +660,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ t: 'JOIN_GAME', payload: { gameId: joinGameId } }));
+                    socket.send(JSON.stringify({ type: 'JOIN_GAME', payload: { gameId: joinGameId } }));
                     gameId = joinGameId;
                 } else {
                     updateStatus('Not connected to server');
@@ -1204,7 +680,7 @@
                 }
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ t: 'RESIGN', payload: { gameId } }));
+                    socket.send(JSON.stringify({ type: 'RESIGN', payload: { gameId } }));
                 } else {
                     updateStatus('Not connected to server');
                 }
