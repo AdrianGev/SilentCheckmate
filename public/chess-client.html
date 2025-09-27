@@ -157,6 +157,68 @@
         .draw-button:hover {
             background-color: #ec971f;
         }
+        
+        /* Time control styles */
+        .time-controls {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .time-controls-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .time-controls-form button {
+            margin-left: auto;
+        }
+        
+        .time-controls-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        /* Chess clock styles */
+        .chess-clocks {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            width: 480px;
+        }
+        
+        .clock {
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 48%;
+        }
+        
+        .clock-active {
+            background-color: #e8f5e9;
+        }
+        
+        .clock-low {
+            color: red;
+        }
+        
+        .clock-time {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .clock-player {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -190,6 +252,34 @@
                 <button id="reset-btn">Reset Board</button>
                 <button id="resign-btn" disabled>Resign</button>
                 <button id="offer-draw-btn" disabled class="draw-button">Offer Draw</button>
+            </div>
+            
+            <!-- Time Controls -->
+            <div id="time-controls" class="time-controls">
+                <form id="time-controls-form" class="time-controls-form">
+                    <label>
+                        Time (minutes)
+                        <input type="number" id="time-minutes" min="1" max="60" value="10" required>
+                    </label>
+                    <label>
+                        Increment (seconds)
+                        <input type="number" id="time-increment" min="0" max="60" value="0" required>
+                    </label>
+                    <button type="submit" id="create-timed-game-btn">Create Timed Game</button>
+                    <button type="button" id="cancel-timed-game-btn">Cancel</button>
+                </form>
+            </div>
+            
+            <!-- Chess Clocks -->
+            <div id="chess-clocks" class="chess-clocks" style="display: none;">
+                <div id="opponent-clock" class="clock">
+                    <div id="opponent-name" class="clock-player">Opponent</div>
+                    <div id="opponent-time" class="clock-time">10:00</div>
+                </div>
+                <div id="player-clock" class="clock">
+                    <div id="player-name" class="clock-player">You</div>
+                    <div id="player-time" class="clock-time">10:00</div>
+                </div>
             </div>
             
             <chess-board id="board"
@@ -254,6 +344,14 @@
         let username = '';
         let gameId = '';
         let isGameActive = false;
+        let isTimedGame = false;
+        let playerColor = 'white';
+        let playerClock = null;
+        let opponentClock = null;
+        let timeMinutes = 10;
+        let timeIncrement = 0;
+        let activePlayer = 'white';
+        let clockInterval = null;
         
         // Get server URL from localStorage or use default
         function getServerUrl() {
@@ -298,6 +396,11 @@
                     if (msg.last) {
                         addMoveToHistory(msg.last);
                         updateStatus(`Last move: ${msg.last}`);
+                        
+                        // Handle clock updates if this is a timed game
+                        if (isTimedGame && msg.activePlayer) {
+                            updateClockAfterMove(msg.activePlayer, msg.whiteTime, msg.blackTime);
+                        }
                     }
                 }
                 
@@ -344,7 +447,20 @@
                     console.log('Game created:', payload);
                     gameId = payload.gameId;
                     document.getElementById('game-id').textContent = `Game ID: ${gameId}`;
-                    updateStatus(`Game created. Share ID ${gameId} with your opponent.`);
+                    
+                    // Check if this is a timed game
+                    if (payload.timeControl) {
+                        isTimedGame = true;
+                        timeMinutes = payload.timeControl.minutes;
+                        timeIncrement = payload.timeControl.increment;
+                        updateStatus(`Game created with ${timeMinutes} min + ${timeIncrement} sec increment. Share ID ${gameId} with your opponent.`);
+                        
+                        // Initialize clocks
+                        initializeClocks(timeMinutes);
+                        document.getElementById('chess-clocks').style.display = 'flex';
+                    } else {
+                        updateStatus(`Game created. Share ID ${gameId} with your opponent.`);
+                    }
                     
                     // Join the game room
                     socket.send(JSON.stringify({ t: "JOIN", gameId }));
@@ -355,13 +471,29 @@
                     document.getElementById('join-game-id').disabled = true;
                     document.getElementById('resign-btn').disabled = false;
                     document.getElementById('offer-draw-btn').disabled = false;
+                    
+                    // Set player color
+                    playerColor = 'white';
                     break;
                     
                 case 'GAME_JOINED':
                     console.log('Game joined:', payload);
                     gameId = payload.gameId;
                     document.getElementById('game-id').textContent = `Game ID: ${gameId}`;
-                    updateStatus(`Joined game ${gameId}. Playing as ${payload.color}.`);
+                    
+                    // Check if this is a timed game
+                    if (payload.timeControl) {
+                        isTimedGame = true;
+                        timeMinutes = payload.timeControl.minutes;
+                        timeIncrement = payload.timeControl.increment;
+                        updateStatus(`Joined game ${gameId} with ${timeMinutes} min + ${timeIncrement} sec increment. Playing as ${payload.color}.`);
+                        
+                        // Initialize clocks
+                        initializeClocks(timeMinutes);
+                        document.getElementById('chess-clocks').style.display = 'flex';
+                    } else {
+                        updateStatus(`Joined game ${gameId}. Playing as ${payload.color}.`);
+                    }
                     
                     // Join the game room
                     socket.send(JSON.stringify({ t: "JOIN", gameId }));
@@ -375,10 +507,16 @@
                     
                     isGameActive = true;
                     
-                    // Set board orientation
+                    // Set player color and update clock labels
+                    playerColor = payload.color;
                     const board = document.getElementById('board');
                     if (payload.color === 'black') {
                         board.setAttribute('orientation', 'black');
+                        document.getElementById('player-name').textContent = username + ' (Black)';
+                        document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
+                    } else {
+                        document.getElementById('player-name').textContent = username + ' (White)';
+                        document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
                     }
                     break;
                     
@@ -387,11 +525,31 @@
                     updateStatus(`${payload.opponent} joined the game. Your turn.`);
                     isGameActive = true;
                     document.getElementById('offer-draw-btn').disabled = false;
+                    
+                    // Update opponent name in clock
+                    if (playerColor === 'white') {
+                        document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
+                        document.getElementById('player-name').textContent = username + ' (White)';
+                    } else {
+                        document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
+                        document.getElementById('player-name').textContent = username + ' (Black)';
+                    }
+                    
+                    // Start the clock if this is a timed game
+                    if (isTimedGame) {
+                        startClock('white'); // White always moves first
+                    }
                     break;
                     
                 case 'GAME_OVER':
                     console.log('Game over:', payload);
                     isGameActive = false;
+                    
+                    // Stop the clock if it's running
+                    if (clockInterval) {
+                        clearInterval(clockInterval);
+                        clockInterval = null;
+                    }
                     
                     let message = '';
                     let title = 'Game Over';
@@ -411,6 +569,14 @@
                         } else {
                             title = 'You Lost';
                             message = `You resigned. ${payload.winner} wins.`;
+                        }
+                    } else if (payload.reason === 'timeout') {
+                        if (payload.winner === username) {
+                            title = 'You Won!';
+                            message = `${payload.loser} ran out of time. You win!`;
+                        } else {
+                            title = 'You Lost';
+                            message = `You ran out of time. ${payload.winner} wins.`;
                         }
                     } else if (payload.reason === 'draw') {
                         title = 'Draw';
@@ -639,8 +805,60 @@
                     return;
                 }
                 
+                // Show time controls
+                document.getElementById('time-controls').style.display = 'block';
+            });
+            
+            // Time controls form
+            const timeControlsForm = document.getElementById('time-controls-form');
+            const cancelTimedGameBtn = document.getElementById('cancel-timed-game-btn');
+            
+            timeControlsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                // Get time control values
+                timeMinutes = parseInt(document.getElementById('time-minutes').value, 10);
+                timeIncrement = parseInt(document.getElementById('time-increment').value, 10);
+                
+                if (isNaN(timeMinutes) || timeMinutes < 1) {
+                    updateStatus('Please enter a valid time in minutes');
+                    return;
+                }
+                
+                if (isNaN(timeIncrement) || timeIncrement < 0) {
+                    updateStatus('Please enter a valid increment in seconds');
+                    return;
+                }
+                
+                // Hide time controls
+                document.getElementById('time-controls').style.display = 'none';
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ 
+                        type: 'CREATE_GAME', 
+                        payload: { 
+                            timeControl: {
+                                minutes: timeMinutes,
+                                increment: timeIncrement
+                            }
+                        } 
+                    }));
+                    isTimedGame = true;
+                    
+                    // Initialize clocks
+                    initializeClocks(timeMinutes);
+                } else {
+                    updateStatus('Not connected to server');
+                }
+            });
+            
+            cancelTimedGameBtn.addEventListener('click', () => {
+                document.getElementById('time-controls').style.display = 'none';
+                
+                // Create regular game without time controls
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({ type: 'CREATE_GAME', payload: {} }));
+                    isTimedGame = false;
                 } else {
                     updateStatus('Not connected to server');
                 }
@@ -710,6 +928,134 @@
                     promo: "q" 
                 }));
             });
+            
+            // Chess clock functions
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes}:${secs < 10 ? '0' + secs : secs}`;
+            }
+            
+            function initializeClocks(minutes) {
+                const totalSeconds = minutes * 60;
+                playerClock = totalSeconds;
+                opponentClock = totalSeconds;
+                
+                document.getElementById('player-time').textContent = formatTime(playerClock);
+                document.getElementById('opponent-time').textContent = formatTime(opponentClock);
+            }
+            
+            function startClock(color) {
+                // Clear any existing interval
+                if (clockInterval) {
+                    clearInterval(clockInterval);
+                }
+                
+                activePlayer = color;
+                
+                // Update active clock visual
+                const playerClockElement = document.getElementById('player-clock');
+                const opponentClockElement = document.getElementById('opponent-clock');
+                
+                if ((playerColor === 'white' && color === 'white') || 
+                    (playerColor === 'black' && color === 'black')) {
+                    playerClockElement.classList.add('clock-active');
+                    opponentClockElement.classList.remove('clock-active');
+                } else {
+                    opponentClockElement.classList.add('clock-active');
+                    playerClockElement.classList.remove('clock-active');
+                }
+                
+                clockInterval = setInterval(() => {
+                    if (!isGameActive) {
+                        clearInterval(clockInterval);
+                        return;
+                    }
+                    
+                    // Determine whose clock to decrement
+                    if ((playerColor === 'white' && color === 'white') || 
+                        (playerColor === 'black' && color === 'black')) {
+                        playerClock--;
+                        document.getElementById('player-time').textContent = formatTime(playerClock);
+                        
+                        // Check for time out
+                        if (playerClock <= 0) {
+                            clearInterval(clockInterval);
+                            timeOut(playerColor);
+                        }
+                        
+                        // Add low time warning
+                        if (playerClock <= 30) {
+                            document.getElementById('player-time').classList.add('clock-low');
+                        }
+                    } else {
+                        opponentClock--;
+                        document.getElementById('opponent-time').textContent = formatTime(opponentClock);
+                        
+                        // Check for time out
+                        if (opponentClock <= 0) {
+                            clearInterval(clockInterval);
+                            timeOut(color);
+                        }
+                        
+                        // Add low time warning
+                        if (opponentClock <= 30) {
+                            document.getElementById('opponent-time').classList.add('clock-low');
+                        }
+                    }
+                }, 1000);
+            }
+            
+            function updateClockAfterMove(newActivePlayer, whiteTime, blackTime) {
+                // If server sent time values, use them
+                if (whiteTime !== undefined && blackTime !== undefined) {
+                    if (playerColor === 'white') {
+                        playerClock = whiteTime;
+                        opponentClock = blackTime;
+                    } else {
+                        playerClock = blackTime;
+                        opponentClock = whiteTime;
+                    }
+                    
+                    document.getElementById('player-time').textContent = formatTime(playerClock);
+                    document.getElementById('opponent-time').textContent = formatTime(opponentClock);
+                } else {
+                    // Add increment to the player who just moved
+                    const previousPlayer = newActivePlayer === 'white' ? 'black' : 'white';
+                    
+                    if (playerColor === previousPlayer) {
+                        playerClock += timeIncrement;
+                        document.getElementById('player-time').textContent = formatTime(playerClock);
+                    } else {
+                        opponentClock += timeIncrement;
+                        document.getElementById('opponent-time').textContent = formatTime(opponentClock);
+                    }
+                }
+                
+                // Start the clock for the new active player
+                startClock(newActivePlayer);
+            }
+            
+            function timeOut(color) {
+                // Determine winner
+                const winner = color === playerColor ? 'opponent' : 'player';
+                const winnerName = winner === 'player' ? username : document.getElementById('opponent-name').textContent.split(' ')[0];
+                const loserName = winner === 'player' ? document.getElementById('opponent-name').textContent.split(' ')[0] : username;
+                
+                // Send timeout message to server
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ 
+                        type: 'TIMEOUT', 
+                        payload: { 
+                            gameId,
+                            winner: winnerName,
+                            loser: loserName
+                        } 
+                    }));
+                }
+                
+                isGameActive = false;
+            }
         });
     </script>
 </body>

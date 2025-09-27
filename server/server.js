@@ -46,9 +46,18 @@ const games = {};
 const userSockets = new Map();
 
 // Store rooms for direct chess.js validation
-const rooms = new Map(); // gameId -> { chess, sockets:Set }
+const rooms = new Map(); // gameId -> { chess, sockets:Set, timeControl, whiteTime, blackTime, activePlayer }
 function getRoom(id) {
-  if (!rooms.has(id)) rooms.set(id, { chess: new Chess(), sockets: new Set() });
+  if (!rooms.has(id)) {
+    rooms.set(id, { 
+      chess: new Chess(), 
+      sockets: new Set(),
+      timeControl: null,
+      whiteTime: null,
+      blackTime: null,
+      activePlayer: 'white' // White always moves first
+    });
+  }
   return rooms.get(id);
 }
 
@@ -107,7 +116,20 @@ wss.on("connection", (socket) => {
         r.sockets.add(socket);
         socket._room = msg.gameId;
         console.log("JOIN", msg.gameId);
-        socket.send(JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: null }));
+        
+        // Include time control information if available
+        if (r.timeControl) {
+          socket.send(JSON.stringify({ 
+            t: "STATE", 
+            fen: r.chess.fen(), 
+            last: null,
+            activePlayer: r.activePlayer,
+            whiteTime: r.whiteTime,
+            blackTime: r.blackTime
+          }));
+        } else {
+          socket.send(JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: null }));
+        }
         return;
       }
       
@@ -118,7 +140,33 @@ wss.on("connection", (socket) => {
           socket.send(JSON.stringify({ t: "ILLEGAL" }));
           return;
         }
-        const payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+        
+        // Update active player after move
+        r.activePlayer = r.activePlayer === 'white' ? 'black' : 'white';
+        
+        // Handle time control if enabled
+        let payload;
+        if (r.timeControl) {
+          // Add increment to the player who just moved (previous active player)
+          const previousPlayer = r.activePlayer === 'white' ? 'black' : 'white';
+          if (previousPlayer === 'white') {
+            r.whiteTime += r.timeControl.increment;
+          } else {
+            r.blackTime += r.timeControl.increment;
+          }
+          
+          payload = JSON.stringify({ 
+            t: "STATE", 
+            fen: r.chess.fen(), 
+            last: mv.san,
+            activePlayer: r.activePlayer,
+            whiteTime: r.whiteTime,
+            blackTime: r.blackTime
+          });
+        } else {
+          payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+        }
+        
         console.log("MOVE", socket._room, mv.san);
         for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
         return;
@@ -152,6 +200,9 @@ wss.on("connection", (socket) => {
         const gameId = uuidv4().substring(0, 8);
         socket.gameId = gameId;
         
+        // Check if time control is specified
+        const timeControl = payload?.timeControl;
+        
         // Create new game
         games[gameId] = {
           id: gameId,
@@ -160,12 +211,27 @@ wss.on("connection", (socket) => {
           opponent: null,
           opponentSocket: null,
           game: new Chess(),
-          status: "waiting"
+          status: "waiting",
+          timeControl: timeControl || null
         };
+        
+        // Set up time control in the room if specified
+        if (timeControl) {
+          const room = getRoom(gameId);
+          room.timeControl = {
+            minutes: timeControl.minutes,
+            increment: timeControl.increment
+          };
+          room.whiteTime = timeControl.minutes * 60; // Convert to seconds
+          room.blackTime = timeControl.minutes * 60;
+        }
         
         sendJSON(socket, { 
           type: "GAME_CREATED", 
-          payload: { gameId },
+          payload: { 
+            gameId,
+            timeControl: timeControl || null
+          },
           timestamp: Date.now()
         });
         break;
@@ -205,7 +271,9 @@ wss.on("connection", (socket) => {
           payload: { 
             gameId: joinGameId, 
             creator: games[joinGameId].creator,
-            color: "black"
+            opponent: games[joinGameId].creator,
+            color: "black",
+            timeControl: games[joinGameId].timeControl
           },
           timestamp: Date.now()
         });
@@ -416,6 +484,34 @@ wss.on("connection", (socket) => {
             timestamp: Date.now()
           });
         }
+        break;
+        
+      case "TIMEOUT":
+        const { gameId: timeoutGameId, winner: timeoutWinner, loser: timeoutLoser } = payload;
+        
+        // Check if game exists
+        if (!games[timeoutGameId]) {
+          sendJSON(socket, { 
+            type: "ERROR", 
+            payload: { message: "Game not found" },
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
+        // Update game status
+        games[timeoutGameId].status = "completed";
+        
+        // Notify all players
+        broadcastToGame(timeoutGameId, {
+          type: "GAME_OVER",
+          payload: {
+            reason: "timeout",
+            winner: timeoutWinner,
+            loser: timeoutLoser
+          },
+          timestamp: Date.now()
+        });
         break;
         
       default:
