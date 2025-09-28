@@ -159,34 +159,41 @@
         }
         
         /* Time control styles */
-        .time-controls {
+        .time-control-dialog {
             display: none;
-            margin-top: 10px;
-            padding: 10px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background-color: #fff;
+            padding: 20px;
             border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+            width: 300px;
         }
         
-        .time-controls-form {
+        .time-control-form {
             display: flex;
-            gap: 10px;
-            align-items: center;
+            flex-direction: column;
+            gap: 15px;
         }
         
-        .time-controls-form button {
-            margin-left: auto;
-        }
-        
-        .time-controls-form label {
+        .time-control-form .form-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
         
+        .time-control-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
         /* Chess clock styles */
         .chess-clocks {
-            display: flex;
+            display: none;
             justify-content: space-between;
             margin: 10px 0;
             width: 480px;
@@ -218,6 +225,17 @@
         .clock-player {
             font-size: 14px;
             margin-bottom: 5px;
+        }
+        
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 90;
         }
     </style>
 </head>
@@ -252,22 +270,6 @@
                 <button id="reset-btn">Reset Board</button>
                 <button id="resign-btn" disabled>Resign</button>
                 <button id="offer-draw-btn" disabled class="draw-button">Offer Draw</button>
-            </div>
-            
-            <!-- Time Controls -->
-            <div id="time-controls" class="time-controls">
-                <form id="time-controls-form" class="time-controls-form">
-                    <label>
-                        Time (minutes)
-                        <input type="number" id="time-minutes" min="1" max="60" value="10" required>
-                    </label>
-                    <label>
-                        Increment (seconds)
-                        <input type="number" id="time-increment" min="0" max="60" value="0" required>
-                    </label>
-                    <button type="submit" id="create-timed-game-btn">Create Timed Game</button>
-                    <button type="button" id="cancel-timed-game-btn">Cancel</button>
-                </form>
             </div>
             
             <!-- Chess Clocks -->
@@ -313,6 +315,26 @@
             </div>
         </div>
         
+        <!-- Time Control Dialog -->
+        <div id="overlay" class="overlay"></div>
+        <div id="time-control-dialog" class="time-control-dialog">
+            <h3>Time Control Settings</h3>
+            <form id="time-control-form" class="time-control-form">
+                <div class="form-group">
+                    <label for="time-minutes">Time (minutes)</label>
+                    <input type="number" id="time-minutes" min="1" max="60" value="10" required>
+                </div>
+                <div class="form-group">
+                    <label for="time-increment">Increment (seconds)</label>
+                    <input type="number" id="time-increment" min="0" max="60" value="0" required>
+                </div>
+                <div class="time-control-buttons">
+                    <button type="submit" id="create-timed-game-btn">Create Game</button>
+                    <button type="button" id="cancel-time-control-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+        
         <!-- Game Result Popup -->
         <div id="result-popup" class="popup-overlay">
             <div class="popup">
@@ -344,6 +366,8 @@
         let username = '';
         let gameId = '';
         let isGameActive = false;
+        
+        // Time control variables
         let isTimedGame = false;
         let playerColor = 'white';
         let playerClock = null;
@@ -400,7 +424,6 @@
                     
                     // Handle clock updates if this is a timed game
                     if (isTimedGame && msg.activePlayer) {
-                        console.log("Updating clock for active player:", msg.activePlayer);
                         updateClockAfterMove(msg.activePlayer, msg.whiteTime, msg.blackTime);
                     }
                 }
@@ -451,7 +474,6 @@
                     
                     // Check if this is a timed game
                     if (payload.timeControl) {
-                        isTimedGame = true;
                         timeMinutes = payload.timeControl.minutes;
                         timeIncrement = payload.timeControl.increment;
                         updateStatus(`Game created with ${timeMinutes} min + ${timeIncrement} sec increment. Share ID ${gameId} with your opponent.`);
@@ -460,9 +482,11 @@
                         initializeClocks(timeMinutes);
                     } else {
                         updateStatus(`Game created. Share ID ${gameId} with your opponent.`);
-                        // Hide clocks for non-timed games
                         document.getElementById('chess-clocks').style.display = 'none';
                     }
+                    
+                    // Set player color
+                    playerColor = 'white';
                     
                     // Join the game room
                     socket.send(JSON.stringify({ t: "JOIN", gameId }));
@@ -473,9 +497,6 @@
                     document.getElementById('join-game-id').disabled = true;
                     document.getElementById('resign-btn').disabled = false;
                     document.getElementById('offer-draw-btn').disabled = false;
-                    
-                    // Set player color
-                    playerColor = 'white';
                     break;
                     
                 case 'GAME_JOINED':
@@ -494,7 +515,6 @@
                         initializeClocks(timeMinutes);
                     } else {
                         updateStatus(`Joined game ${gameId}. Playing as ${payload.color}.`);
-                        // Hide clocks for non-timed games
                         document.getElementById('chess-clocks').style.display = 'none';
                     }
                     
@@ -533,22 +553,13 @@
                     // Update opponent name in clock
                     if (playerColor === 'white') {
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
-                        document.getElementById('player-name').textContent = username + ' (White)';
                     } else {
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
-                        document.getElementById('player-name').textContent = username + ' (Black)';
                     }
                     
                     // Start the clock if this is a timed game
                     if (isTimedGame) {
-                        console.log('Starting clock for white player');
                         startClock('white'); // White always moves first
-                        
-                        // Make sure clocks are visible
-                        document.getElementById('chess-clocks').style.display = 'flex';
-                    } else {
-                        // Hide clocks for non-timed games
-                        document.getElementById('chess-clocks').style.display = 'none';
                     }
                     break;
                     
@@ -816,15 +827,16 @@
                     return;
                 }
                 
-                // Show time controls
-                document.getElementById('time-controls').style.display = 'block';
+                // Show time control dialog
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('time-control-dialog').style.display = 'block';
             });
             
-            // Time controls form
-            const timeControlsForm = document.getElementById('time-controls-form');
-            const cancelTimedGameBtn = document.getElementById('cancel-timed-game-btn');
+            // Time control form handling
+            const timeControlForm = document.getElementById('time-control-form');
+            const cancelTimeControlBtn = document.getElementById('cancel-time-control-btn');
             
-            timeControlsForm.addEventListener('submit', (e) => {
+            timeControlForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
                 // Get time control values
@@ -832,19 +844,22 @@
                 timeIncrement = parseInt(document.getElementById('time-increment').value, 10);
                 
                 if (isNaN(timeMinutes) || timeMinutes < 1) {
-                    updateStatus('Please enter a valid time in minutes');
+                    alert('Please enter a valid time in minutes');
                     return;
                 }
                 
                 if (isNaN(timeIncrement) || timeIncrement < 0) {
-                    updateStatus('Please enter a valid increment in seconds');
+                    alert('Please enter a valid increment in seconds');
                     return;
                 }
                 
-                // Hide time controls
-                document.getElementById('time-controls').style.display = 'none';
+                // Hide dialog
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('time-control-dialog').style.display = 'none';
                 
+                // Create game with time control
                 if (socket && socket.readyState === WebSocket.OPEN) {
+                    isTimedGame = true;
                     socket.send(JSON.stringify({ 
                         type: 'CREATE_GAME', 
                         payload: { 
@@ -854,22 +869,20 @@
                             }
                         } 
                     }));
-                    isTimedGame = true;
-                    
-                    // Initialize clocks
-                    initializeClocks(timeMinutes);
                 } else {
                     updateStatus('Not connected to server');
                 }
             });
             
-            cancelTimedGameBtn.addEventListener('click', () => {
-                document.getElementById('time-controls').style.display = 'none';
+            cancelTimeControlBtn.addEventListener('click', () => {
+                // Hide dialog
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('time-control-dialog').style.display = 'none';
                 
-                // Create regular game without time controls
+                // Create regular game without time control
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'CREATE_GAME', payload: {} }));
                     isTimedGame = false;
+                    socket.send(JSON.stringify({ type: 'CREATE_GAME', payload: {} }));
                 } else {
                     updateStatus('Not connected to server');
                 }
@@ -931,7 +944,6 @@
                     return;
                 }
                 
-                console.log('Sending move:', source, 'to', target);
                 socket.send(JSON.stringify({ 
                     t: "MOVE", 
                     gameId, 
@@ -939,15 +951,6 @@
                     to: target, 
                     promo: "q" 
                 }));
-            });
-            
-            // Also handle piece drag start to prevent illegal moves
-            board.addEventListener('dragstart', (e) => {
-                if (!isGameActive) {
-                    e.preventDefault();
-                    updateStatus('Game is not active');
-                    return false;
-                }
             });
             
             // Chess clock functions
@@ -965,7 +968,7 @@
                 document.getElementById('player-time').textContent = formatTime(playerClock);
                 document.getElementById('opponent-time').textContent = formatTime(opponentClock);
                 
-                // Make sure clocks are visible
+                // Make sure clocks are visible for timed games
                 document.getElementById('chess-clocks').style.display = 'flex';
             }
             
@@ -973,6 +976,7 @@
                 // Clear any existing interval
                 if (clockInterval) {
                     clearInterval(clockInterval);
+                    clockInterval = null;
                 }
                 
                 activePlayer = color;
@@ -993,6 +997,7 @@
                 clockInterval = setInterval(() => {
                     if (!isGameActive) {
                         clearInterval(clockInterval);
+                        clockInterval = null;
                         return;
                     }
                     
@@ -1005,6 +1010,7 @@
                         // Check for time out
                         if (playerClock <= 0) {
                             clearInterval(clockInterval);
+                            clockInterval = null;
                             timeOut(playerColor);
                         }
                         
@@ -1019,6 +1025,7 @@
                         // Check for time out
                         if (opponentClock <= 0) {
                             clearInterval(clockInterval);
+                            clockInterval = null;
                             timeOut(color);
                         }
                         
@@ -1031,11 +1038,8 @@
             }
             
             function updateClockAfterMove(newActivePlayer, whiteTime, blackTime) {
-                console.log('Updating clock after move:', newActivePlayer, whiteTime, blackTime);
-                
                 // If server sent time values, use them
                 if (whiteTime !== undefined && blackTime !== undefined) {
-                    console.log('Using server time values:', whiteTime, blackTime);
                     if (playerColor === 'white') {
                         playerClock = whiteTime;
                         opponentClock = blackTime;
@@ -1049,7 +1053,6 @@
                 } else {
                     // Add increment to the player who just moved
                     const previousPlayer = newActivePlayer === 'white' ? 'black' : 'white';
-                    console.log('Adding increment to previous player:', previousPlayer);
                     
                     if (playerColor === previousPlayer) {
                         playerClock += timeIncrement;
@@ -1059,9 +1062,6 @@
                         document.getElementById('opponent-time').textContent = formatTime(opponentClock);
                     }
                 }
-                
-                // Make sure clocks are visible
-                document.getElementById('chess-clocks').style.display = 'flex';
                 
                 // Start the clock for the new active player
                 startClock(newActivePlayer);

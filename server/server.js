@@ -270,7 +270,7 @@ wss.on("connection", (socket) => {
         games[joinGameId].opponentSocket = socket;
         games[joinGameId].status = "playing";
         
-        // Notify both players
+        // Send game joined message to joining player
         sendJSON(socket, { 
           type: "GAME_JOINED", 
           payload: { 
