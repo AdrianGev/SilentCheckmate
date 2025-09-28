@@ -147,6 +147,18 @@ wss.on("connection", (socket) => {
         }
         
         const r = getRoom(msg.gameId);
+        
+        // Check if it's the player's turn
+        const game = games[msg.gameId];
+        const isWhitePlayer = game.creator === socket.username;
+        const isBlackPlayer = game.opponent === socket.username;
+        
+        if ((r.activePlayer === 'white' && !isWhitePlayer) || 
+            (r.activePlayer === 'black' && !isBlackPlayer)) {
+          console.log("Not player's turn");
+          socket.send(JSON.stringify({ t: "ILLEGAL" }));
+          return;
+        }
         try {
           const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
           if (!mv) {

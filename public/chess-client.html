@@ -517,7 +517,9 @@
                         
                         // Initialize clocks
                         initializeClocks(timeMinutes);
+                        console.log('Clock initialized for joining player, isTimedGame:', isTimedGame);
                     } else {
+                        isTimedGame = false;
                         updateStatus(`Joined game ${gameId}. Playing as ${payload.color}.`);
                         document.getElementById('chess-clocks').style.display = 'none';
                     }
@@ -537,14 +539,17 @@
                     // Set player color and update clock labels
                     playerColor = payload.color;
                     let joinBoard = document.getElementById('board');
+                    console.log('Setting board orientation for', payload.color, 'player');
                     if (payload.color === 'black') {
                         joinBoard.setAttribute('orientation', 'black');
                         document.getElementById('player-name').textContent = username + ' (Black)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
+                        console.log('Board orientation set to black');
                     } else {
                         joinBoard.setAttribute('orientation', 'white');
                         document.getElementById('player-name').textContent = username + ' (White)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
+                        console.log('Board orientation set to white');
                     }
                     break;
                     
@@ -966,6 +971,7 @@
             }
             
             function initializeClocks(minutes) {
+                console.log('Initializing clocks with', minutes, 'minutes');
                 const totalSeconds = minutes * 60;
                 playerClock = totalSeconds;
                 opponentClock = totalSeconds;
@@ -974,7 +980,9 @@
                 document.getElementById('opponent-time').textContent = formatTime(opponentClock);
                 
                 // Make sure clocks are visible for timed games
-                document.getElementById('chess-clocks').style.display = 'flex';
+                const clocksElement = document.getElementById('chess-clocks');
+                clocksElement.style.display = 'flex';
+                console.log('Clocks display set to flex, current style:', clocksElement.style.display);
             }
             
             function startClock(color) {
