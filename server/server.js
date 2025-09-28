@@ -46,18 +46,9 @@ const games = {};
 const userSockets = new Map();
 
 // Store rooms for direct chess.js validation
-const rooms = new Map(); // gameId -> { chess, sockets:Set, timeControl, whiteTime, blackTime, activePlayer }
+const rooms = new Map(); // gameId -> { chess, sockets:Set }
 function getRoom(id) {
-  if (!rooms.has(id)) {
-    rooms.set(id, { 
-      chess: new Chess(), 
-      sockets: new Set(),
-      timeControl: null,
-      whiteTime: null,
-      blackTime: null,
-      activePlayer: 'white' // White always moves first
-    });
-  }
+  if (!rooms.has(id)) rooms.set(id, { chess: new Chess(), sockets: new Set() });
   return rooms.get(id);
 }
 
@@ -95,7 +86,6 @@ wss.on("connection", (socket) => {
     message: "Connected to SilentCheckmate server",
     timestamp: Date.now()
   });
-  
   // Handle messages
   socket.on("message", (data) => {
     let message;
@@ -110,94 +100,26 @@ wss.on("connection", (socket) => {
     if (message.t) {
       // New format (t, gameId, from, to)
       const msg = message;
-      console.log("Received new format message:", msg.t, msg.gameId);
       
       if (msg.t === "JOIN" && msg.gameId) {
         const r = getRoom(msg.gameId);
         r.sockets.add(socket);
         socket._room = msg.gameId;
         console.log("JOIN", msg.gameId);
-        
-        // Include time control information if available
-        if (r.timeControl) {
-          socket.send(JSON.stringify({ 
-            t: "STATE", 
-            fen: r.chess.fen(), 
-            last: null,
-            activePlayer: r.activePlayer,
-            whiteTime: r.whiteTime,
-            blackTime: r.blackTime
-          }));
-        } else {
-          socket.send(JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: null }));
-        }
+        socket.send(JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: null }));
         return;
       }
       
-      if (msg.t === "MOVE" && msg.gameId) {
-        console.log("Processing MOVE:", msg.from, "to", msg.to, "in game", msg.gameId);
-        
-        // Check if the player is part of this game
-        if (!games[msg.gameId] || 
-            (games[msg.gameId].creator !== socket.username && 
-             games[msg.gameId].opponent !== socket.username)) {
-          console.log("Player not authorized for this game");
+      if (msg.t === "MOVE" && socket._room && msg.gameId === socket._room) {
+        const r = getRoom(socket._room);
+        const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
+        if (!mv) {
           socket.send(JSON.stringify({ t: "ILLEGAL" }));
           return;
         }
-        
-        const r = getRoom(msg.gameId);
-        
-        // Check if it's the player's turn
-        const game = games[msg.gameId];
-        const isWhitePlayer = game.creator === socket.username;
-        const isBlackPlayer = game.opponent === socket.username;
-        
-        if ((r.activePlayer === 'white' && !isWhitePlayer) || 
-            (r.activePlayer === 'black' && !isBlackPlayer)) {
-          console.log("Not player's turn");
-          socket.send(JSON.stringify({ t: "ILLEGAL" }));
-          return;
-        }
-        try {
-          const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
-          if (!mv) {
-            socket.send(JSON.stringify({ t: "ILLEGAL" }));
-            return;
-          }
-          
-          // Update active player after move
-          r.activePlayer = r.activePlayer === 'white' ? 'black' : 'white';
-          
-          // Handle time control if enabled
-          let payload;
-          if (r.timeControl) {
-            // Add increment to the player who just moved (previous active player)
-            const previousPlayer = r.activePlayer === 'white' ? 'black' : 'white';
-            if (previousPlayer === 'white') {
-              r.whiteTime += r.timeControl.increment;
-            } else {
-              r.blackTime += r.timeControl.increment;
-            }
-            
-            payload = JSON.stringify({ 
-              t: "STATE", 
-              fen: r.chess.fen(), 
-              last: mv.san,
-              activePlayer: r.activePlayer,
-              whiteTime: r.whiteTime,
-              blackTime: r.blackTime
-            });
-          } else {
-            payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
-          }
-          
-          console.log("MOVE", socket._room, mv.san);
-          for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
-        } catch (error) {
-          console.error("Error processing move:", error);
-          socket.send(JSON.stringify({ t: "ILLEGAL" }));
-        }
+        const payload = JSON.stringify({ t: "STATE", fen: r.chess.fen(), last: mv.san });
+        console.log("MOVE", socket._room, mv.san);
+        for (const s of r.sockets) if (s.readyState === 1) s.send(payload);
         return;
       }
       
@@ -244,21 +166,6 @@ wss.on("connection", (socket) => {
           timeControl: timeControl || null
         };
         
-        // Set up the room and add creator to it
-        const room = getRoom(gameId);
-        room.sockets.add(socket); // Add creator to room
-        socket._room = gameId; // Set room for creator
-        
-        // Set up time control in the room if specified
-        if (timeControl) {
-          room.timeControl = {
-            minutes: timeControl.minutes,
-            increment: timeControl.increment
-          };
-          room.whiteTime = timeControl.minutes * 60; // Convert to seconds
-          room.blackTime = timeControl.minutes * 60;
-        }
-        
         sendJSON(socket, { 
           type: "GAME_CREATED", 
           payload: { 
@@ -298,18 +205,12 @@ wss.on("connection", (socket) => {
         games[joinGameId].opponentSocket = socket;
         games[joinGameId].status = "playing";
         
-        // Add opponent to room
-        const joinRoom = getRoom(joinGameId);
-        joinRoom.sockets.add(socket);
-        socket._room = joinGameId;
-        
-        // Send game joined message to joining player
+        // Notify both players
         sendJSON(socket, { 
           type: "GAME_JOINED", 
           payload: { 
             gameId: joinGameId, 
             creator: games[joinGameId].creator,
-            opponent: games[joinGameId].creator,
             color: "black",
             timeControl: games[joinGameId].timeControl
           },

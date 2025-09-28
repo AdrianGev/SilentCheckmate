@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SilentCheckmate - Chess Client</title>
     <script type="module" src="https://unpkg.com/chessboard-element?module"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboard2@0.5.0/dist/chessboard2.min.js"></script>
+    <script src="https://unpkg.com/chess.js@1.0.0-beta.6/chess.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -413,18 +415,13 @@
                 console.log("Received message:", msg);
                 
                 if (msg.t === "STATE") {
-                    console.log("STATE", msg.fen, "last:", msg.last, "activePlayer:", msg.activePlayer);
+                    console.log("STATE", msg.fen, "last:", msg.last);
                     const board = document.getElementById("board");
                     board.setAttribute("position", msg.fen); // update from server
                     
                     if (msg.last) {
                         addMoveToHistory(msg.last);
                         updateStatus(`Last move: ${msg.last}`);
-                    }
-                    
-                    // Handle clock updates if this is a timed game
-                    if (isTimedGame && msg.activePlayer) {
-                        updateClockAfterMove(msg.activePlayer, msg.whiteTime, msg.blackTime);
                     }
                 }
                 
@@ -570,6 +567,14 @@
                     if (isTimedGame) {
                         startClock('white'); // White always moves first
                     }
+                    break;
+                    
+                case 'MOVE_MADE':
+                    console.log('Move made:', payload);
+                    const board = document.getElementById('board');
+                    board.setAttribute('position', payload.fen);
+                    addMoveToHistory(payload.move);
+                    updateStatus(`${payload.player} played: ${payload.move}`);
                     break;
                     
                 case 'GAME_OVER':
@@ -937,11 +942,10 @@
                 }
             });
             
-            // Drag-drop → send MOVE to server
+            // Drag-drop → send MAKE_MOVE to server
             const board = document.getElementById('board');
             board.addEventListener('drop', (e) => {
                 const { source, target, setAction } = e.detail;
-                setAction('snapback'); // don't move locally; trust server STATE
                 
                 if (!socket || socket.readyState !== 1) {
                     updateStatus('Not connected to server');
@@ -950,17 +954,33 @@
                 
                 if (!gameId) {
                     // Allow moves in test mode
+                    setAction('drop'); // Allow local move in test mode
                     return;
                 }
                 
-                console.log('Sending move:', source, 'to', target, 'gameId:', gameId);
+                // Try to make the move locally first to get the new FEN
+                const chess = new Chess(board.getAttribute('position'));
+                const move = chess.move({ from: source, to: target, promotion: 'q' });
+                
+                if (!move) {
+                    setAction('snapback');
+                    updateStatus('Illegal move');
+                    return;
+                }
+                
+                // Send move to server with new FEN
+                console.log('Sending move:', move.san, 'gameId:', gameId);
                 socket.send(JSON.stringify({ 
-                    t: "MOVE", 
-                    gameId, 
-                    from: source, 
-                    to: target, 
-                    promo: "q" 
+                    type: "MAKE_MOVE", 
+                    payload: {
+                        gameId, 
+                        move: move.san,
+                        fen: chess.fen()
+                    }
                 }));
+                
+                // Don't update locally, wait for server confirmation
+                setAction('snapback');
             });
             
             // Chess clock functions
