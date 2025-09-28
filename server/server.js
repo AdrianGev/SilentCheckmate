@@ -110,6 +110,7 @@ wss.on("connection", (socket) => {
     if (message.t) {
       // New format (t, gameId, from, to)
       const msg = message;
+      console.log("Received new format message:", msg.t, msg.gameId);
       
       if (msg.t === "JOIN" && msg.gameId) {
         const r = getRoom(msg.gameId);
@@ -133,8 +134,19 @@ wss.on("connection", (socket) => {
         return;
       }
       
-      if (msg.t === "MOVE" && socket._room && msg.gameId === socket._room) {
-        const r = getRoom(socket._room);
+      if (msg.t === "MOVE" && msg.gameId) {
+        console.log("Processing MOVE:", msg.from, "to", msg.to, "in game", msg.gameId);
+        
+        // Check if the player is part of this game
+        if (!games[msg.gameId] || 
+            (games[msg.gameId].creator !== socket.username && 
+             games[msg.gameId].opponent !== socket.username)) {
+          console.log("Player not authorized for this game");
+          socket.send(JSON.stringify({ t: "ILLEGAL" }));
+          return;
+        }
+        
+        const r = getRoom(msg.gameId);
         try {
           const mv = r.chess.move({ from: msg.from, to: msg.to, promotion: msg.promo || "q" });
           if (!mv) {
@@ -220,9 +232,13 @@ wss.on("connection", (socket) => {
           timeControl: timeControl || null
         };
         
+        // Set up the room and add creator to it
+        const room = getRoom(gameId);
+        room.sockets.add(socket); // Add creator to room
+        socket._room = gameId; // Set room for creator
+        
         // Set up time control in the room if specified
         if (timeControl) {
-          const room = getRoom(gameId);
           room.timeControl = {
             minutes: timeControl.minutes,
             increment: timeControl.increment
@@ -269,6 +285,11 @@ wss.on("connection", (socket) => {
         games[joinGameId].opponent = socket.username;
         games[joinGameId].opponentSocket = socket;
         games[joinGameId].status = "playing";
+        
+        // Add opponent to room
+        const joinRoom = getRoom(joinGameId);
+        joinRoom.sockets.add(socket);
+        socket._room = joinGameId;
         
         // Send game joined message to joining player
         sendJSON(socket, { 

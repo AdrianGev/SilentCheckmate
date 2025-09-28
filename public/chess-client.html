@@ -485,8 +485,12 @@
                         document.getElementById('chess-clocks').style.display = 'none';
                     }
                     
-                    // Set player color
+                    // Set player color and board orientation
                     playerColor = 'white';
+                    let gameBoard = document.getElementById('board');
+                    gameBoard.setAttribute('orientation', 'white');
+                    document.getElementById('player-name').textContent = username + ' (White)';
+                    document.getElementById('opponent-name').textContent = 'Waiting for opponent...';
                     
                     // Join the game room
                     socket.send(JSON.stringify({ t: "JOIN", gameId }));
@@ -532,13 +536,13 @@
                     
                     // Set player color and update clock labels
                     playerColor = payload.color;
-                    const board = document.getElementById('board');
+                    let joinBoard = document.getElementById('board');
                     if (payload.color === 'black') {
-                        board.setAttribute('orientation', 'black');
+                        joinBoard.setAttribute('orientation', 'black');
                         document.getElementById('player-name').textContent = username + ' (Black)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (White)';
                     } else {
-                        board.setAttribute('orientation', 'white');
+                        joinBoard.setAttribute('orientation', 'white');
                         document.getElementById('player-name').textContent = username + ' (White)';
                         document.getElementById('opponent-name').textContent = payload.opponent + ' (Black)';
                     }
@@ -944,6 +948,7 @@
                     return;
                 }
                 
+                console.log('Sending move:', source, 'to', target, 'gameId:', gameId);
                 socket.send(JSON.stringify({ 
                     t: "MOVE", 
                     gameId, 
